@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rutas Activas — Repartidor</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#060d1a; --surface:#0a1628; --surface2:#0f1f38; --surface3:#152844;
+  --border:#1e3556; --border2:#2a4a70;
+  --orange:#ff7b00; --orange2:#ff9a33; --orange-bg:rgba(255,123,0,0.12);
+  --nav-green:#39ff14; --nav-green2:#7fff45;
+  --urg12:#ff8c00; --urg14:#ff1744; --urg19:#00b0ff;
+  --rec14:#9c27b0; --rec18:#e91e63;
+  --done:#00e676; --fail:#ff1744; --amber:#ffca28;
+  --text:#e3f0ff; --text2:#a8c4e0; --muted:#4a6a8a; --white:#ffffff;
+  --font-head:'Exo 2',sans-serif; --font-mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-head);min-height:100vh;display:flex;flex-direction:column;}
+body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse at 20% 0%,rgba(0,176,255,0.06) 0%,transparent 60%),
+             radial-gradient(ellipse at 80% 100%,rgba(255,123,0,0.04) 0%,transparent 60%);}
+
+/* ── HEADER ── */
+header{position:relative;z-index:10;background:var(--surface);border-bottom:2px solid var(--border2);}
+.header-main{display:flex;justify-content:space-between;align-items:center;padding:11px 16px 9px;}
+.brand-tag{font-family:var(--font-mono);font-size:8px;letter-spacing:4px;color:var(--urg19);text-transform:uppercase;opacity:0.7;}
+.brand-name{font-size:26px;font-weight:900;color:var(--white);letter-spacing:2px;text-transform:uppercase;line-height:1;}
+.brand-name span{color:var(--orange);}
+.clock-date{font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--urg19);letter-spacing:2px;text-align:right;}
+.clock-day{font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;text-align:right;}
+
+/* ── 4 CAJITAS ALARMA ── */
+.alarm-strip{display:flex;border-top:1px solid var(--border);}
+.alarm-cell{flex:1;padding:10px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-right:1px solid var(--border);position:relative;overflow:hidden;cursor:default;transition:all 0.3s;}
+.alarm-cell:last-child{border-right:none;}
+.alarm-cell.ok{background:var(--surface2);}
+.alarm-cell.ok .alarm-time{color:var(--muted);}
+.alarm-cell.ok .alarm-desc{color:var(--muted);}
+.alarm-cell.ok .alarm-icon{opacity:0.4;}
+.alarm-cell.warn{background:rgba(255,202,40,0.1);animation:cellWarn 1.5s infinite;}
+.alarm-cell.warn .alarm-time{color:var(--amber);}
+.alarm-cell.warn .alarm-desc{color:var(--amber);}
+@keyframes cellWarn{0%,100%{background:rgba(255,202,40,0.1)}50%{background:rgba(255,202,40,0.22)}}
+.alarm-cell.alert{background:rgba(255,23,68,0.12);animation:cellAlert 0.7s infinite;}
+.alarm-cell.alert .alarm-time{color:var(--fail);}
+.alarm-cell.alert .alarm-desc{color:var(--fail);}
+@keyframes cellAlert{0%,100%{background:rgba(255,23,68,0.12)}50%{background:rgba(255,23,68,0.28)}}
+.alarm-cell::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--border);transition:all 0.3s;}
+.alarm-cell.warn::after{background:var(--amber);animation:barPulse 1.5s infinite;}
+.alarm-cell.alert::after{background:var(--fail);animation:barPulse 0.7s infinite;}
+@keyframes barPulse{0%,100%{opacity:1}50%{opacity:0.2}}
+.alarm-icon{font-size:18px;line-height:1;}
+.alarm-time{font-family:var(--font-mono);font-size:13px;font-weight:700;letter-spacing:1px;line-height:1;color:var(--muted);}
+.alarm-desc{font-family:var(--font-mono);font-size:7px;letter-spacing:0.5px;text-transform:uppercase;text-align:center;line-height:1.3;color:var(--muted);}
+
+/* ── LAYOUT ── */
+.app-body{position:relative;z-index:1;display:flex;flex:1;height:calc(100vh - 112px);overflow:hidden;}
+
+/* ── PANEL IZQ ── */
+.panel-left{width:345px;min-width:300px;background:var(--surface);border-right:2px solid var(--border2);display:flex;flex-direction:column;overflow:hidden;}
+.add-box{padding:10px 12px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.box-title{font-family:var(--font-mono);font-size:8px;letter-spacing:4px;color:var(--urg19);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.box-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+input[type="text"]{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:11px 13px;color:var(--white);font-family:var(--font-mono);font-size:13px;outline:none;transition:all 0.2s;margin-bottom:8px;}
+input[type="text"]:focus{border-color:var(--urg19);box-shadow:0 0 0 3px rgba(0,176,255,0.12);}
+input[type="text"]::placeholder{color:var(--muted);}
+
+.urg-selector{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:8px;}
+.urg-btn{padding:7px 3px;border-radius:5px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-family:var(--font-mono);font-size:10px;font-weight:700;cursor:pointer;text-align:center;transition:all 0.15s;}
+.urg-btn:hover{border-color:var(--orange);color:var(--orange);}
+.urg-btn[data-urg="normal"].selected{background:rgba(0,230,118,0.15);border-color:var(--done);color:var(--done);}
+.urg-btn[data-urg="12"].selected{background:rgba(255,140,0,0.15);border-color:var(--urg12);color:var(--urg12);}
+.urg-btn[data-urg="14"].selected{background:rgba(255,23,68,0.15);border-color:var(--urg14);color:var(--urg14);}
+.urg-btn[data-urg="19"].selected{background:rgba(0,176,255,0.15);border-color:var(--urg19);color:var(--urg19);}
+.urg-btn[data-urg="rec14"].selected{background:rgba(156,39,176,0.15);border-color:var(--rec14);color:var(--rec14);}
+.urg-btn[data-urg="rec18"].selected{background:rgba(233,30,99,0.15);border-color:var(--rec18);color:var(--rec18);}
+
+.btn-row{display:flex;gap:6px;}
+.btn-add{flex:1;padding:11px;background:var(--orange-bg);border:1px solid var(--orange);border-radius:6px;color:var(--orange);font-family:var(--font-head);font-size:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;}
+.btn-add:hover{background:var(--orange);color:var(--bg);}
+.btn-opt{flex:1;padding:11px;background:var(--orange);border:1px solid var(--orange);border-radius:6px;color:var(--bg);font-family:var(--font-head);font-size:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;box-shadow:0 0 16px rgba(255,123,0,0.25);}
+.btn-opt:hover{background:var(--orange2);}
+.btn-opt:disabled{background:var(--surface3);color:var(--muted);border-color:var(--border);box-shadow:none;cursor:not-allowed;}
+.btn-import{width:100%;margin-top:6px;padding:8px;background:transparent;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-family:var(--font-mono);font-size:11px;letter-spacing:1px;cursor:pointer;transition:all 0.15s;text-transform:uppercase;}
+.btn-import:hover{border-color:var(--urg19);color:var(--urg19);}
+
+.legend{display:flex;gap:8px;flex-wrap:wrap;padding:5px 12px;background:var(--bg);border-bottom:1px solid var(--border);}
+.legend-item{display:flex;align-items:center;gap:3px;font-family:var(--font-mono);font-size:9px;color:var(--muted);}
+.legend-dot{width:6px;height:6px;border-radius:1px;flex-shrink:0;}
+
+.prog-wrap{padding:6px 12px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.prog-track{flex:1;min-width:60px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--urg19),var(--nav-green));border-radius:2px;transition:width 0.4s;}
+.prog-txt{font-family:var(--font-mono);font-size:10px;color:var(--muted);white-space:nowrap;}
+.prog-aplazado{font-family:var(--font-mono);font-size:10px;color:var(--done);white-space:nowrap;font-weight:700;display:none;}
+
+.stops-list{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;}
+.stops-list::-webkit-scrollbar{width:3px;}
+.stops-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* ── TARJETA PARADA ── */
+.stop-card{background:var(--surface2);border:1px solid var(--border);border-left:5px solid var(--border);border-radius:8px;padding:14px 12px 14px 14px;display:flex;align-items:flex-start;gap:10px;transition:all 0.15s;}
+.stop-card.urg-10{border-left-color:var(--urg10);}
+.stop-card.urg-12{border-left-color:var(--urg12);}
+.stop-card.urg-14{border-left-color:var(--urg14);}
+.stop-card.urg-19{border-left-color:var(--urg19);}
+.stop-card.normal-card{border-left-color:var(--done);}
+.stop-card.completed{opacity:0.35;}
+.stop-card.aplazado-card{border-left-color:var(--done);background:rgba(0,230,118,0.06);border-color:rgba(0,230,118,0.2);}
+.stop-card.aplazado-priority{border-left-color:var(--amber);background:rgba(255,202,40,0.06);border-color:rgba(255,202,40,0.25);}
+.stop-card.aplazado-critical{border-left-color:var(--fail);background:rgba(255,23,68,0.06);animation:cardCrit 0.8s infinite;}
+@keyframes cardCrit{0%,100%{background:rgba(255,23,68,0.06)}50%{background:rgba(255,23,68,0.14)}}
+.stop-card.fallida{border-left-color:var(--fail);background:rgba(255,23,68,0.04);}
+
+.stop-num{font-family:var(--font-mono);font-size:20px;font-weight:700;color:var(--orange);min-width:28px;line-height:1;padding-top:3px;}
+.stop-num.done{color:var(--done);}
+.stop-body{flex:1;min-width:0;}
+.stop-id{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase;}
+
+/* DIRECCIÓN — grande y visible, sin recortar */
+.stop-dir{font-size:15px;font-weight:700;color:var(--white);white-space:normal;word-break:break-word;line-height:1.4;margin-bottom:8px;}
+
+.stop-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;}
+.tag{font-family:var(--font-mono);font-size:9px;font-weight:700;padding:3px 8px;border-radius:3px;letter-spacing:1px;text-transform:uppercase;border:1px solid;}
+.b10{background:rgba(96,125,139,0.12);color:var(--urg10);border-color:var(--urg10);}
+.b12{background:rgba(255,140,0,0.12);color:var(--urg12);border-color:var(--urg12);}
+.b14{background:rgba(255,23,68,0.12);color:var(--urg14);border-color:var(--urg14);}
+.b19{background:rgba(0,176,255,0.12);color:var(--urg19);border-color:var(--urg19);}
+.brec14{background:rgba(156,39,176,0.12);color:var(--rec14);border-color:var(--rec14);}
+.brec18{background:rgba(233,30,99,0.12);color:var(--rec18);border-color:var(--rec18);}
+.bstart{background:rgba(0,230,118,0.12);color:var(--done);border-color:var(--done);}
+.t-aplazado{background:rgba(0,230,118,0.2);color:var(--done);border-color:var(--done);padding:3px 10px;animation:tagGlow 2s infinite;}
+@keyframes tagGlow{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(0,230,118,0.4)}}
+.t-aplazado-warn{background:rgba(255,202,40,0.15);color:var(--amber);border-color:var(--amber);padding:3px 10px;}
+.t-aplazado-crit{background:rgba(255,23,68,0.15);color:var(--fail);border-color:var(--fail);padding:3px 10px;animation:tagCrit 0.6s infinite;}
+@keyframes tagCrit{0%,100%{opacity:1}50%{opacity:0.5}}
+.stop-note{font-family:var(--font-mono);font-size:11px;color:var(--amber);margin-top:4px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fallo-item{font-family:var(--font-mono);font-size:10px;color:var(--fail);margin-top:3px;padding:3px 7px;background:rgba(255,23,68,0.08);border-radius:3px;border-left:2px solid var(--fail);}
+
+/* BOTONES ACCIÓN — en columna para que quepan todos */
+.stop-btns{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+.stop-btns-row{display:flex;gap:5px;flex-wrap:wrap;}
+
+/* ── BOTONES ACCIÓN ── */
+.btn-nav{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;background:rgba(57,255,20,0.12);border:1px solid var(--nav-green);border-radius:5px;color:var(--nav-green);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;box-shadow:0 0 10px rgba(57,255,20,0.12);}
+.btn-nav:hover{background:var(--nav-green);color:var(--bg);box-shadow:0 0 20px rgba(57,255,20,0.35);}
+.btn-fallo-card{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;background:transparent;border:1px solid rgba(255,23,68,0.35);border-radius:5px;color:rgba(255,23,68,0.7);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;}
+.btn-fallo-card:hover{background:var(--fail);color:#fff;border-color:var(--fail);}
+
+/* ── BOTÓN APLAZAR — SEMÁFORO ── */
+.btn-aplazar{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border-radius:5px;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid;transition:all 0.2s;}
+.btn-aplazar.sem-green{background:rgba(0,230,118,0.12);border-color:var(--done);color:var(--done);}
+.btn-aplazar.sem-green:hover{background:var(--done);color:var(--bg);}
+.btn-aplazar.sem-green-blink{background:rgba(0,230,118,0.12);border-color:var(--done);color:var(--done);animation:semGreenBlink 1.5s infinite;}
+@keyframes semGreenBlink{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,0)}50%{box-shadow:0 0 14px 4px rgba(0,230,118,0.4)}}
+.btn-aplazar.sem-amber{background:rgba(255,202,40,0.15);border-color:var(--amber);color:var(--amber);animation:semAmber 1s infinite;}
+@keyframes semAmber{0%,100%{box-shadow:0 0 0 0 rgba(255,202,40,0)}50%{box-shadow:0 0 16px 4px rgba(255,202,40,0.5)}}
+.btn-aplazar.sem-red{background:rgba(255,23,68,0.2);border-color:var(--fail);color:var(--fail);animation:semRed 0.5s infinite;}
+@keyframes semRed{0%,100%{box-shadow:0 0 0 0 rgba(255,23,68,0);background:rgba(255,23,68,0.2)}50%{box-shadow:0 0 18px 5px rgba(255,23,68,0.6);background:rgba(255,23,68,0.38)}}
+.btn-aplazar.aplazado-ok{background:rgba(0,230,118,0.2);border-color:var(--done);color:var(--done);cursor:default;}
+
+.stop-actions{display:flex;flex-direction:column;gap:4px;flex-shrink:0;}
+.icon-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:5px 7px;cursor:pointer;font-size:12px;transition:all 0.15s;}
+.icon-btn:hover{border-color:var(--urg19);color:var(--urg19);}
+
+/* ── PANEL DER ── */
+.panel-right{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.map-toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.route-stats{display:flex;gap:18px;flex:1;}
+.stat{display:flex;flex-direction:column;}
+.stat-label{font-family:var(--font-mono);font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+.stat-value{font-size:22px;font-weight:900;color:var(--orange);letter-spacing:1px;}
+#map{flex:1;display:none;}
+.map-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);gap:12px;font-family:var(--font-mono);position:relative;overflow:hidden;}
+.map-placeholder::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(0,176,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,176,255,0.04) 1px,transparent 1px);background-size:50px 50px;}
+.map-ph-content{position:relative;z-index:1;text-align:center;}
+.map-ph-icon{font-size:48px;opacity:0.15;margin-bottom:10px;}
+.map-ph-text{font-size:11px;letter-spacing:2px;text-transform:uppercase;opacity:0.5;line-height:1.8;}
+.btn-clear{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:6px 12px;font-family:var(--font-mono);font-size:10px;letter-spacing:1px;cursor:pointer;text-transform:uppercase;transition:all 0.15s;}
+.btn-clear:hover{border-color:var(--fail);color:var(--fail);}
+.bottom-bar{padding:8px 12px;border-top:1px solid var(--border);background:var(--surface);}
+.btn-new-day{width:100%;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:2px;padding:9px;cursor:pointer;text-transform:uppercase;transition:all 0.15s;}
+.btn-new-day:hover{border-color:var(--amber);color:var(--amber);}
+.empty-stops{text-align:center;padding:32px 16px;color:var(--muted);font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;line-height:2;}
+.empty-icon{font-size:36px;opacity:0.2;margin-bottom:8px;}
+.notif-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:14px 22px;border-radius:10px;font-family:var(--font-head);font-size:15px;font-weight:800;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.5);max-width:90vw;text-align:center;letter-spacing:1px;}
+
+/* ── POPUPS ── */
+.popup-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9000;align-items:center;justify-content:center;padding:20px;}
+.popup-overlay.open{display:flex;}
+.popup{width:100%;max-width:390px;border-radius:16px;padding:30px 24px;text-align:center;animation:popIn 0.3s ease;}
+@keyframes popIn{from{transform:scale(0.85);opacity:0}to{transform:scale(1);opacity:1}}
+.popup.warn{background:#1a1400;border:3px solid var(--amber);box-shadow:0 0 50px rgba(255,202,40,0.35);}
+.popup.alert{background:#1a0005;border:3px solid var(--fail);box-shadow:0 0 50px rgba(255,23,68,0.45);animation:popIn 0.3s ease,shake 0.5s ease 0.3s;}
+.popup.success{background:#001a0a;border:3px solid var(--done);box-shadow:0 0 50px rgba(0,230,118,0.35);}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.popup-icon{font-size:56px;margin-bottom:10px;}
+.popup-time{font-family:var(--font-head);font-size:52px;font-weight:900;letter-spacing:3px;margin-bottom:6px;line-height:1;}
+.popup.warn .popup-time{color:var(--amber);}
+.popup.alert .popup-time{color:var(--fail);text-shadow:0 0 25px rgba(255,23,68,0.6);}
+.popup.success .popup-time{color:var(--done);}
+.popup-title{font-family:var(--font-head);font-size:20px;font-weight:900;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+.popup.warn .popup-title{color:var(--amber);}
+.popup.alert .popup-title{color:var(--fail);}
+.popup.success .popup-title{color:var(--done);}
+.popup-sancion{font-family:var(--font-head);font-size:44px;font-weight:900;color:var(--fail);margin:10px 0;text-shadow:0 0 25px rgba(255,23,68,0.7);}
+.popup-msg{font-family:var(--font-mono);font-size:12px;line-height:1.7;margin-bottom:22px;}
+.popup.warn .popup-msg{color:#c8a800;}
+.popup.alert .popup-msg{color:#ff7070;}
+.popup.success .popup-msg{color:#00b356;}
+.popup-btn{width:100%;padding:15px;border:none;border-radius:10px;font-family:var(--font-head);font-size:15px;font-weight:900;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;}
+.popup.warn .popup-btn{background:var(--amber);color:#1a1400;}
+.popup.alert .popup-btn{background:var(--fail);color:#fff;box-shadow:0 0 20px rgba(255,23,68,0.4);}
+.popup.success .popup-btn{background:var(--done);color:#001a0a;}
+
+/* ── MODALES ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:22px;width:100%;max-width:440px;border-top:3px solid var(--orange);}
+.modal h3{font-family:var(--font-head);font-size:18px;font-weight:800;color:var(--white);margin-bottom:4px;letter-spacing:1px;}
+.modal-sub{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:14px;letter-spacing:0.5px;}
+.modal textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:11px;color:var(--text);font-family:var(--font-mono);font-size:13px;resize:vertical;min-height:90px;outline:none;}
+.modal textarea:focus{border-color:var(--urg19);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;}
+.btn-mc{padding:9px 16px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:var(--font-head);font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;}
+.btn-ms{padding:9px 16px;background:var(--orange);border:1px solid var(--orange);border-radius:6px;color:var(--bg);font-family:var(--font-head);font-size:13px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;}
+.btn-mf{padding:9px 16px;background:var(--fail);border:1px solid var(--fail);border-radius:6px;color:#fff;font-family:var(--font-head);font-size:13px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;}
+select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:9px 10px;color:var(--white);font-family:var(--font-mono);font-size:12px;outline:none;cursor:pointer;}
+.endpoint-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.endpoint-label{font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;min-width:46px;}
+
+@media(max-width:600px){
+  .app-body{flex-direction:column;height:auto;}
+  .panel-left{width:100%;min-width:unset;max-height:60vh;}
+  .panel-right{height:40vh;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-main">
+    <div>
+      <div class="brand-tag">// sistema de reparto</div>
+      <div class="brand-name">RUTAS <span>ACTIVAS</span></div>
+    </div>
+    <div>
+      <div class="clock-date" id="hoy-fecha"></div>
+      <div class="clock-day" id="hoy-dia"></div>
+    </div>
+  </div>
+  <div class="alarm-strip">
+    <div class="alarm-cell ok" id="al-aviso">
+      <div class="alarm-icon">⚡</div>
+      <div class="alarm-time" id="al-aviso-time">—</div>
+      <div class="alarm-desc">Aviso<br>Aplazamiento</div>
+    </div>
+    <div class="alarm-cell ok" id="al-12">
+      <div class="alarm-icon">🕐</div>
+      <div class="alarm-time">11:20</div>
+      <div class="alarm-desc">Aplazar<br>12 Horas</div>
+    </div>
+    <div class="alarm-cell ok" id="al-14">
+      <div class="alarm-icon">🕑</div>
+      <div class="alarm-time">13:20</div>
+      <div class="alarm-desc">Aplazar<br>14 Horas</div>
+    </div>
+    <div class="alarm-cell ok" id="al-19">
+      <div class="alarm-icon">🕕</div>
+      <div class="alarm-time">17:20</div>
+      <div class="alarm-desc">Aplazar<br>19 Horas</div>
+    </div>
+  </div>
+</header>
+
+<div class="app-body">
+  <div class="panel-left">
+    <div class="add-box">
+      <div class="box-title">➕ nueva parada</div>
+      <input type="text" id="input-dir" placeholder="Calle Extremadura 4..." autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <div class="urg-selector" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+        <button class="urg-btn selected" data-urg="normal" onclick="selUrg('normal')">Normal</button>
+        <button class="urg-btn" data-urg="12" onclick="selUrg('12')">🟠 12h</button>
+        <button class="urg-btn" data-urg="14" onclick="selUrg('14')">🔴 14h</button>
+        <button class="urg-btn" data-urg="19" onclick="selUrg('19')">🔵 19h</button>
+        <button class="urg-btn" data-urg="rec14" onclick="selUrg('rec14')">📤 Recog. 14h</button>
+        <button class="urg-btn" data-urg="rec18" onclick="selUrg('rec18')">📤 Recog. 18h</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn-add" onclick="addStop()">+ Añadir</button>
+        <button class="btn-opt" id="btn-opt" onclick="showOptModal()" disabled>🗺 Optimizar</button>
+      </div>
+      <button class="btn-import" onclick="showImportModal()">📋 Importar varias direcciones</button>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--urg10)"></div>10h</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--urg12)"></div>12h</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--urg14)"></div>14h</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--urg19)"></div>19h</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--done)"></div>Normal</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--nav-green)"></div>Navegar</div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="prog-txt" id="prog-txt">0 / 0 entregados</div>
+      <div class="prog-aplazado" id="prog-aplazado">🟢 0 aplazados</div>
+    </div>
+    <div class="stops-list" id="stops-list">
+      <div class="empty-stops"><div class="empty-icon">📦</div>Añade paradas<br>y pulsa OPTIMIZAR</div>
+    </div>
+    <div class="bottom-bar">
+      <button class="btn-new-day" onclick="newDay()">🔄 Nueva Jornada</button>
+    </div>
+  </div>
+
+  <div class="panel-right">
+    <div class="map-toolbar">
+      <div class="route-stats">
+        <div class="stat"><span class="stat-label">Pendientes</span><span class="stat-value" id="stat-par">0</span></div>
+        <div class="stat"><span class="stat-label">Distancia</span><span class="stat-value" id="stat-dist">—</span></div>
+        <div class="stat"><span class="stat-label">Tiempo est.</span><span class="stat-value" id="stat-time">—</span></div>
+      </div>
+      <button class="btn-clear" onclick="clearRoute()">🗑 Limpiar</button>
+    </div>
+    <div id="map"></div>
+    <div class="map-placeholder" id="map-placeholder">
+      <div class="map-ph-content">
+        <div class="map-ph-icon">🗺️</div>
+        <div class="map-ph-text">Añade paradas<br>y pulsa OPTIMIZAR<br>para ver la ruta</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- POPUP AMARILLO — AVISO -->
+<div class="popup-overlay" id="popup-warn">
+  <div class="popup warn">
+    <div class="popup-icon">⚠️</div>
+    <div class="popup-time" id="pw-time"></div>
+    <div class="popup-title" id="pw-title"></div>
+    <div class="popup-msg" id="pw-msg"></div>
+    <button class="popup-btn" onclick="cerrarPopup('warn')">✓ Entendido</button>
+  </div>
+</div>
+
+<!-- POPUP ROJO — APLAZAMIENTO OBLIGATORIO -->
+<div class="popup-overlay" id="popup-alert">
+  <div class="popup alert">
+    <div class="popup-icon">🚨</div>
+    <div class="popup-time" id="pa-time"></div>
+    <div class="popup-title" id="pa-title"></div>
+    <div class="popup-sancion" id="pa-sancion" style="display:none"></div>
+    <div class="popup-msg" id="pa-msg"></div>
+    <button class="popup-btn" onclick="cerrarPopup('alert')">⚠️ Confirmo — Aplazando ahora</button>
+  </div>
+</div>
+
+<!-- POPUP VERDE — TODO APLAZADO OK -->
+<div class="popup-overlay" id="popup-success">
+  <div class="popup success">
+    <div class="popup-icon">✅</div>
+    <div class="popup-time" id="ps-time"></div>
+    <div class="popup-title" id="ps-title"></div>
+    <div class="popup-msg" id="ps-msg"></div>
+    <button class="popup-btn" onclick="cerrarPopup('success')">👍 Perfecto</button>
+  </div>
+</div>
+
+<!-- MODAL NOTA -->
+<div class="modal-overlay" id="modal-nota">
+  <div class="modal">
+    <h3>📝 Nota de parada</h3>
+    <div class="modal-sub" id="modal-dir"></div>
+    <textarea id="modal-textarea" placeholder="Puerta cerrada, conserjería, reparto fallido..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-mc" onclick="closeModal('nota')">Cancelar</button>
+      <button class="btn-ms" onclick="saveNote()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FALLO -->
+<div class="modal-overlay" id="modal-fallo">
+  <div class="modal" style="border-top-color:var(--fail)">
+    <h3 style="color:var(--fail)">⚠️ Fallo de Entrega</h3>
+    <div class="modal-sub" id="modal-fallo-dir"></div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">Motivo — opcional</div>
+    <textarea id="modal-fallo-textarea" placeholder="Sin respuesta · Nadie en casa · Empresa cerrada · Dirección incorrecta..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-mc" onclick="closeModal('fallo')">Cancelar</button>
+      <button class="btn-mf" onclick="saveFallo()">⚠️ Registrar Fallo</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORTAR -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal" style="max-width:500px">
+    <h3>📋 Importar Direcciones</h3>
+    <div class="modal-sub">Pega aquí todas las direcciones — una por línea</div>
+    <textarea id="import-textarea" style="min-height:150px;font-size:12px;line-height:1.6;" placeholder="Calle Extremadura 4&#10;Avenida Juan Carlos 21&#10;Calle Mayor 8&#10;Carretera de Mula 56&#10;..."></textarea>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin:8px 0 6px;letter-spacing:0.5px">Tipo de urgente para todas:</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;">
+      <button class="urg-btn selected" data-iurg="normal" onclick="selImportUrg('normal')">Normal</button>
+      <button class="urg-btn" data-iurg="10" onclick="selImportUrg('10')">⬜ 10h</button>
+      <button class="urg-btn" data-iurg="12" onclick="selImportUrg('12')">🟠 12h</button>
+      <button class="urg-btn" data-iurg="14" onclick="selImportUrg('14')">🔴 14h</button>
+      <button class="urg-btn" data-iurg="19" onclick="selImportUrg('19')">🔵 19h</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-mc" onclick="closeModal('import')">Cancelar</button>
+      <button class="btn-ms" onclick="importarDirecciones()">📋 Importar todas</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL OPTIMIZAR — DOS MODOS -->
+<div class="modal-overlay" id="modal-opt">
+  <div class="modal">
+    <h3>🗺 Configurar Ruta</h3>
+    <div class="modal-sub">Elige desde dónde sales hoy</div>
+    <div class="endpoint-row">
+      <span class="endpoint-label" style="color:var(--done)">🟢 Inicio</span>
+      <select id="sel-inicio"></select>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:1px;margin:10px 0 8px">¿Cómo quieres optimizar?</div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="optimizarDistancia()" style="flex:1;padding:12px;background:rgba(0,176,255,0.12);border:1px solid var(--urg19);border-radius:8px;color:var(--urg19);font-family:var(--font-head);font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;line-height:1.4;">
+        🗺️ Por Distancia<br><span style="font-size:10px;font-weight:400;opacity:0.8">Ruta más corta</span>
+      </button>
+      <button onclick="optimizarUrgencia()" style="flex:1;padding:12px;background:rgba(255,123,0,0.12);border:1px solid var(--orange);border-radius:8px;color:var(--orange);font-family:var(--font-head);font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;line-height:1.4;">
+        ⏰ Por Urgencia<br><span style="font-size:10px;font-weight:400;opacity:0.8">10h→12h→14h→19h</span>
+      </button>
+    </div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-mc" onclick="closeModal('opt')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_KEY='AIzaSyCnbxeCPIc_QSpA382a1OZD7YM0sylUogo';
+let stops=[],map,dirService,dirRenderer,mapsLoaded=false,selUrgente='normal',importUrg='normal';
+let editingNoteIdx=null,falloIdx=null,alertVozInterval=null;
+const STORAGE_KEY='rutas_activas_v4';
+
+// ── NUMS EN LETRAS ──
+const NUMS={'cero':0,'uno':1,'una':1,'dos':2,'tres':3,'cuatro':4,'cinco':5,'seis':6,'siete':7,'ocho':8,'nueve':9,'diez':10,'once':11,'doce':12,'trece':13,'catorce':14,'quince':15,'dieciséis':16,'dieciseis':16,'diecisiete':17,'dieciocho':18,'diecinueve':19,'veinte':20,'veintiuno':21,'veintidós':22,'veintidos':22,'veintitrés':23,'veintitres':23,'veinticuatro':24,'veinticinco':25,'veintiséis':26,'veintiseis':26,'veintisiete':27,'veintiocho':28,'veintinueve':29,'treinta':30,'cuarenta':40,'cincuenta':50,'sesenta':60,'setenta':70,'ochenta':80,'noventa':90,'cien':100,'ciento':100};
+function convNums(txt){txt=txt.replace(/n[uú]mero\s+/gi,'');const p=Object.keys(NUMS).sort((a,b)=>b.length-a.length);for(const w of p)txt=txt.replace(new RegExp('\\b'+w+'\\b','gi'),NUMS[w]);return txt.replace(/\s+/g,' ').trim();}
+
+// ── URGENTE ──
+function selUrg(u){selUrgente=u;document.querySelectorAll('[data-urg]').forEach(b=>b.classList.remove('selected'));document.querySelector(`[data-urg="${u}"]`).classList.add('selected');}
+function selImportUrg(u){importUrg=u;document.querySelectorAll('[data-iurg]').forEach(b=>b.classList.remove('selected'));document.querySelector(`[data-iurg="${u}"]`).classList.add('selected');}
+
+// ── PERSISTENCIA ──
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(stops));}
+function load(){try{const s=localStorage.getItem(STORAGE_KEY);if(s)stops=JSON.parse(s);}catch{}}
+function getTodayStr(){return new Date().toISOString().split('T')[0];}
+
+// ── FECHA ──
+function updateDate(){
+  const n=new Date();
+  const dias=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+  const meses=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+  document.getElementById('hoy-fecha').textContent=`${String(n.getDate()).padStart(2,'0')} ${meses[n.getMonth()]} ${n.getFullYear()}`;
+  document.getElementById('hoy-dia').textContent=dias[n.getDay()];
+}
+
+// ── VOZ ──
+function hablar(txt){
+  const speak=()=>{try{window.speechSynthesis.cancel();const m=new SpeechSynthesisUtterance(txt);m.lang='es-ES';m.rate=0.85;m.pitch=1;m.volume=1;window.speechSynthesis.speak(m);}catch{}};
+  speak();setTimeout(speak,600);
+}
+
+// ── TOAST ──
+function toast(msg,color='#ff7b00',tc='#060d1a'){
+  const d=document.createElement('div');d.className='notif-toast';d.style.background=color;d.style.color=tc;d.textContent=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),8000);
+}
+
+// ── POPUPS ──
+function mostrarWarn(hora,titulo,msg,voz){
+  document.getElementById('pw-time').textContent=hora;
+  document.getElementById('pw-title').textContent=titulo;
+  document.getElementById('pw-msg').textContent=msg;
+  document.getElementById('popup-warn').classList.add('open');
+  hablar(voz);
+}
+
+function mostrarAlert(hora,titulo,sancion,msg,voz){
+  document.getElementById('pa-time').textContent=hora;
+  document.getElementById('pa-title').textContent=titulo;
+  const se=document.getElementById('pa-sancion');
+  if(sancion){se.textContent=sancion;se.style.display='block';}else se.style.display='none';
+  document.getElementById('pa-msg').textContent=msg;
+  document.getElementById('popup-alert').classList.add('open');
+  hablar(voz);
+  if(alertVozInterval)clearInterval(alertVozInterval);
+  alertVozInterval=setInterval(()=>{
+    if(document.getElementById('popup-alert').classList.contains('open'))hablar(voz);
+    else{clearInterval(alertVozInterval);alertVozInterval=null;}
+  },30000);
+}
+
+function mostrarSuccess(hora,titulo,msg,voz){
+  document.getElementById('ps-time').textContent=hora;
+  document.getElementById('ps-title').textContent=titulo;
+  document.getElementById('ps-msg').textContent=msg;
+  document.getElementById('popup-success').classList.add('open');
+  hablar(voz);
+}
+
+function cerrarPopup(tipo){
+  document.getElementById('popup-'+tipo).classList.remove('open');
+  if(tipo==='alert'&&alertVozInterval){clearInterval(alertVozInterval);alertVozInterval=null;}
+}
+
+// ══════════════════════════════════════
+// SISTEMA DE ALARMAS
+// Horas correctas:
+// 12h: aviso 11:00 — obligatorio 11:20
+// 14h: aviso 13:00 — obligatorio 13:20
+// 19h: aviso 17:00 — obligatorio 17:20
+// ══════════════════════════════════════
+const ALARMAS=[
+  {
+    keyW:'rec14w',keyA:'rec14a',
+    wH:13,wM:0, aH:13,aM:30,
+    urgente:'rec14', celda:'al-14',
+    wHora:'13:00',wTit:'⚡ Aviso — Recogidas antes 14h',
+    wMsg:'En 30 minutos tienes que hacer las recogidas de antes de las 14h.',
+    wVoz:'Atención. En treinta minutos tienes que hacer las recogidas de antes de las catorce horas.',
+    aHora:'13:30',aTit:'¡Ir a recoger AHORA!',
+    aSancion:'',
+    aMsg:'Es el momento de hacer las recogidas de antes de las 14h. Ve ahora mismo.',
+    aVoz:'Atención urgente. Son las trece y media. Ve ahora mismo a hacer las recogidas de antes de las catorce horas. Recuerda cerrar cada recogida en la PDA.',
+  },
+  {
+    keyW:'rec18w',keyA:'rec18a',
+    wH:17,wM:0, aH:17,aM:30,
+    urgente:'rec18', celda:'al-19',
+    wHora:'17:00',wTit:'⚡ Aviso — Recogidas antes 18h',
+    wMsg:'En 30 minutos tienes que hacer las recogidas de antes de las 18h.',
+    wVoz:'Atención. En treinta minutos tienes que hacer las recogidas de antes de las dieciocho horas.',
+    aHora:'17:30',aTit:'¡Ir a recoger AHORA!',
+    aSancion:'',
+    aMsg:'Es el momento de hacer las recogidas de antes de las 18h. Ve ahora mismo.',
+    aVoz:'Atención urgente. Son las cinco y media. Ve ahora mismo a hacer las recogidas de antes de las dieciocho horas. Recuerda cerrar cada recogida en la PDA.',
+  },
+  {
+    keyW:'12w',keyA:'12a',
+    wH:11,wM:0, aH:11,aM:20,
+    urgente:'12', celda:'al-12',
+    wHora:'11:00',wTit:'⚡ Aviso — Urgentes 12h',
+    wMsg:'En 20 minutos vence el plazo de los urgentes de 12 horas.',
+    wVoz:'Atención. En veinte minutos vence el plazo de los urgentes de doce horas.',
+    aHora:'11:20',aTit:'¡Aplazar urgentes 12h AHORA!',
+    aSancion:'',
+    aMsg:'Debes aplazar todos los urgentes de 12 horas ahora mismo.',
+    aVoz:'Atención urgente. Son las once y veinte. Aplaza los urgentes de doce horas ahora mismo.',
+  },
+  {
+    keyW:'14w',keyA:'14a',
+    wH:13,wM:0, aH:13,aM:20,
+    urgente:'14', celda:'al-14',
+    wHora:'13:00',wTit:'⚡ Aviso — Urgentes 14h',
+    wMsg:'En 20 minutos vence el plazo de los urgentes de 14 horas. Penalización de 50€ por paquete.',
+    wVoz:'Atención. En veinte minutos vence el plazo de los urgentes de catorce horas.',
+    aHora:'13:20',aTit:'¡Aplazar urgentes 14h AHORA!',
+    aSancion:'50€ por paquete',
+    aMsg:'Debes aplazar todos los urgentes de 14 horas. Penalización de 50€ por paquete.',
+    aVoz:'Alerta máxima. Son las trece y veinte. Aplaza los urgentes de catorce horas ahora mismo. La penalización es de cincuenta euros por paquete.',
+  },
+  {
+    keyW:'19w',keyA:'19a',
+    wH:17,wM:0, aH:17,aM:20,
+    urgente:'19', celda:'al-19',
+    wHora:'17:00',wTit:'⚡ Aviso — Urgentes 19h',
+    wMsg:'En 20 minutos vence el plazo de los urgentes de 19 horas.',
+    wVoz:'Atención. En veinte minutos vence el plazo de los urgentes de diecinueve horas.',
+    aHora:'17:20',aTit:'¡Aplazar urgentes 19h AHORA!',
+    aSancion:'',
+    aMsg:'Debes aplazar todos los urgentes de 19 horas que no hayas podido entregar.',
+    aVoz:'Atención urgente. Son las cinco y veinte. Aplaza los urgentes de diecinueve horas ahora mismo.',
+  },
+];
+
+const firedW={},firedA={};
+
+function comprobarAplazamientos(a,hora){
+  const pend=stops.filter(s=>s.urgente===a.urgente&&!s.completada&&!s.aplazado).length;
+  const aplazados=stops.filter(s=>s.urgente===a.urgente&&s.aplazado&&!s.completada).length;
+  if(pend===0){
+    // ✅ Todos aplazados — Popup VERDE
+    mostrarSuccess(hora,'✅ ¡Perfecto!',
+      aplazados>0?`Todos los urgentes de ${a.urgente}h están aplazados correctamente. ¡Buen trabajo!`:`No tienes urgentes de ${a.urgente}h pendientes.`,
+      `Perfecto. Todos los urgentes de ${a.urgente} horas están aplazados correctamente. Buen trabajo.`
+    );
+  } else {
+    // ❌ Quedan sin aplazar — Popup ROJO
+    const msg=`${a.aMsg} Tienes ${pend} urgente${pend>1?'s':''} sin aplazar.`;
+    const voz=`${a.aVoz} Tienes ${pend} urgente${pend>1?'s':''} sin aplazar.`;
+    mostrarAlert(a.aHora,a.aTit,a.aSancion,msg,voz);
+  }
+}
+
+function updateAlarmCells(){
+  const n=new Date(),t=n.getHours()*60+n.getMinutes();
+  // Cajita ⚡ aviso — muestra la próxima alarma activa
+  const proximaWarn=ALARMAS.find(a=>{const tw=a.wH*60+a.wM;return t>=tw&&t<a.aH*60+a.aM;});
+  const alAviso=document.getElementById('al-aviso');
+  const alAvisoTime=document.getElementById('al-aviso-time');
+  if(proximaWarn){
+    alAvisoTime.textContent=proximaWarn.wHora;
+    alAviso.className='alarm-cell warn';
+  } else {
+    const proxima=ALARMAS.find(a=>t<a.wH*60+a.wM);
+    alAvisoTime.textContent=proxima?proxima.wHora:'—';
+    alAviso.className='alarm-cell ok';
+  }
+  // Cajitas principales
+  ALARMAS.forEach(a=>{
+    const cell=document.getElementById(a.celda);
+    const tw=a.wH*60+a.wM,ta=a.aH*60+a.aM;
+    if(t>=ta&&t<ta+30) cell.className='alarm-cell alert';
+    else if(t>=tw&&t<ta) cell.className='alarm-cell warn';
+    else cell.className='alarm-cell ok';
+  });
+}
+
+function checkAlarms(){
+  const n=new Date(),h=n.getHours(),m=n.getMinutes(),t=h*60+m;
+  ALARMAS.forEach(a=>{
+    const tw=a.wH*60+a.wM,ta=a.aH*60+a.aM;
+    // Aviso previo — POPUP AMARILLO
+    if(t>=tw&&t<tw+5&&!firedW[a.keyW]){
+      firedW[a.keyW]=true;
+      mostrarWarn(a.wHora,a.wTit,a.wMsg,a.wVoz);
+    }
+    if(t<tw)firedW[a.keyW]=false;
+    // Hora obligatoria — POPUP ROJO o VERDE
+    if(t>=ta&&t<ta+5&&!firedA[a.keyA]){
+      firedA[a.keyA]=true;
+      comprobarAplazamientos(a,a.aHora);
+    }
+    if(t<ta)firedA[a.keyA]=false;
+  });
+  updateAlarmCells();
+}
+
+// Comprobar al abrir la app
+function checkOnOpen(){
+  const n=new Date(),t=n.getHours()*60+n.getMinutes();
+  ALARMAS.forEach(a=>{
+    const tw=a.wH*60+a.wM,ta=a.aH*60+a.aM;
+    if(t>=tw&&t<ta&&!firedW[a.keyW]){firedW[a.keyW]=true;mostrarWarn(a.wHora,a.wTit,a.wMsg,a.wVoz);}
+    if(t>=ta&&t<ta+30&&!firedA[a.keyA]){firedA[a.keyA]=true;comprobarAplazamientos(a,a.aHora);}
+  });
+  updateAlarmCells();
+}
+
+setInterval(checkAlarms,20000);
+setInterval(updateAlarmCells,30000);
+
+// ── SEMÁFORO APLAZAR ──
+function getSemaforo(stop){
+  const n=new Date(),t=n.getHours()*60+n.getMinutes();
+  const today=getTodayStr();
+  const u=stop.urgente;
+  if(stop.aplazado){
+    if(stop.fechaAplazado&&stop.fechaAplazado<today){
+      if(u==='14'||u==='19'){
+        if(t>=13*60)return 'aplazado-crit';
+        return 'aplazado-warn';
+      }
+    }
+    return 'aplazado-ok';
+  }
+  if(u==='12'){if(t>=11*60+20)return 'sem-red';if(t>=11*60)return 'sem-amber';return 'sem-green';}
+  if(u==='14'){if(t>=13*60+20)return 'sem-red';if(t>=13*60)return 'sem-amber';if(t>=12*60+45)return 'sem-green-blink';return 'sem-green';}
+  if(u==='19'){
+    const creado=stop.fechaCreacion?new Date(stop.fechaCreacion):new Date();
+    const horas=(new Date()-creado)/(1000*60*60);
+    if(horas>=24){if(t>=17*60+20)return 'sem-red';if(t>=17*60)return 'sem-amber';return 'sem-green-blink';}
+    if(t>=17*60+20)return 'sem-red';if(t>=17*60)return 'sem-amber';return 'sem-green';
+  }
+  return 'sem-green';
+}
+
+// ── MAPS ──
+window.initMap=function(){
+  mapsLoaded=true;
+  const def={lat:38.0285,lng:-1.2322};
+  map=new google.maps.Map(document.getElementById('map'),{
+    zoom:14,center:def,
+    styles:[{elementType:'geometry',stylers:[{color:'#0f1f38'}]},{elementType:'labels.text.fill',stylers:[{color:'#a8c4e0'}]},{featureType:'road',elementType:'geometry',stylers:[{color:'#1e3556'}]},{featureType:'road.highway',elementType:'geometry',stylers:[{color:'#2a4a70'}]},{featureType:'water',elementType:'geometry',stylers:[{color:'#060d1a'}]},{featureType:'poi',stylers:[{visibility:'off'}]}],
+    mapTypeControl:false,streetViewControl:false,fullscreenControl:true
+  });
+  dirService=new google.maps.DirectionsService();
+  dirRenderer=new google.maps.DirectionsRenderer({map,polylineOptions:{strokeColor:'#ff7b00',strokeWeight:5,strokeOpacity:0.9}});
+  document.getElementById('map-placeholder').style.display='none';
+  document.getElementById('map').style.display='block';
+  if(navigator.geolocation){navigator.geolocation.getCurrentPosition(pos=>{map.setCenter({lat:pos.coords.latitude,lng:pos.coords.longitude});new google.maps.Marker({position:{lat:pos.coords.latitude,lng:pos.coords.longitude},map,icon:{path:google.maps.SymbolPath.CIRCLE,scale:10,fillColor:'#ff7b00',fillOpacity:1,strokeColor:'#fff',strokeWeight:3}});},()=>{},{enableHighAccuracy:true,timeout:8000});}
+};
+function loadMaps(){if(document.getElementById('gms'))return;const s=document.createElement('script');s.id='gms';s.src=`https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap`;s.async=true;s.defer=true;document.head.appendChild(s);}
+
+// ── AÑADIR ──
+const MUNICIPIOS=['torres de cotillas','murcia','alguazas','ceuti','ceutí','lorqui','lorquí','molina'];
+function getNextId(){const ids=stops.map(s=>s.pkgId||0);return(ids.length>0?Math.max(...ids):0)+1;}
+function getIdColor(u){return{'12':'var(--urg12)','14':'var(--urg14)','19':'var(--urg19)','rec14':'var(--rec14)','rec18':'var(--rec18)','normal':'var(--done)'}[u]||'var(--done)';}
+
+function addStop(){
+  let dir=document.getElementById('input-dir').value.trim();
+  if(!dir){alert('Por favor escribe una dirección.');return;}
+  dir=convNums(dir);
+  if(!MUNICIPIOS.some(m=>dir.toLowerCase().includes(m)))dir+=', Las Torres de Cotillas';
+  stops.push({direccion:dir,urgente:selUrgente,pkgId:getNextId(),nota:'',completada:false,aplazado:false,fallos:[],fechaCreacion:new Date().toISOString(),fechaAplazado:null,id:Date.now()});
+  document.getElementById('input-dir').value='';
+  document.getElementById('input-dir').focus();
+  selUrg('normal');
+  save();render();updateStats();
+  if(!mapsLoaded)loadMaps();
+}
+
+// ── IMPORTAR ──
+function showImportModal(){
+  document.getElementById('import-textarea').value='';
+  selImportUrg('normal');
+  document.getElementById('modal-import').classList.add('open');
+  setTimeout(()=>document.getElementById('import-textarea').focus(),100);
+}
+function importarDirecciones(){
+  const texto=document.getElementById('import-textarea').value.trim();
+  if(!texto){alert('Por favor pega al menos una dirección.');return;}
+  const lineas=texto.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
+  if(!lineas.length){alert('No se encontraron direcciones válidas.');return;}
+  let añadidas=0;
+  lineas.forEach(dir=>{
+    dir=convNums(dir);
+    if(!MUNICIPIOS.some(m=>dir.toLowerCase().includes(m)))dir+=', Las Torres de Cotillas';
+    stops.push({direccion:dir,urgente:importUrg,pkgId:getNextId(),nota:'',completada:false,aplazado:false,fallos:[],fechaCreacion:new Date().toISOString(),fechaAplazado:null,id:Date.now()+Math.random()});
+    añadidas++;
+  });
+  closeModal('import');
+  save();render();updateStats();
+  if(!mapsLoaded)loadMaps();
+  toast(`✅ ${añadidas} direcciones importadas`,'#00e676','#060d1a');
+}
+
+// ── RENDER ──
+const urgBadge={
+  '12':'<span class="tag b12">🟠 URG 12h</span>',
+  '14':'<span class="tag b14">🔴 URG 14h</span>',
+  '19':'<span class="tag b19">🔵 URG 19h</span>',
+  'rec14':'<span class="tag brec14">📤 RECOGIDA antes 14h</span>',
+  'rec18':'<span class="tag brec18">📤 RECOGIDA antes 18h</span>'
+};
+const urgOrder={'rec14':0,'rec18':1,'12':2,'14':3,'19':4,'normal':5};
+
+function render(){
+  const list=document.getElementById('stops-list');
+  const btn=document.getElementById('btn-opt');
+  const today=getTodayStr();
+  if(!stops.length){list.innerHTML='<div class="empty-stops"><div class="empty-icon">📦</div>Añade paradas<br>y pulsa OPTIMIZAR</div>';btn.disabled=true;updateStats();return;}
+  const active=stops.filter(s=>!s.completada);
+  btn.disabled=active.length<2;
+  const sorted=[...stops].sort((a,b)=>{
+    if(a.completada!==b.completada)return a.completada?1:-1;
+    const aAyer=a.aplazado&&a.fechaAplazado&&a.fechaAplazado<today;
+    const bAyer=b.aplazado&&b.fechaAplazado&&b.fechaAplazado<today;
+    if(aAyer!==bAyer)return aAyer?-1:1;
+    if(a.aplazado!==b.aplazado)return a.aplazado?1:-1;
+    return urgOrder[a.urgente]-urgOrder[b.urgente];
+  });
+  const isStart=(s)=>active.length>=2&&s.id===active[0].id;
+  list.innerHTML=sorted.map((s,i)=>{
+    const oi=stops.indexOf(s);
+    const esAyer=s.aplazado&&s.fechaAplazado&&s.fechaAplazado<today;
+    const esHoy=s.aplazado&&s.fechaAplazado===today;
+    const sem=getSemaforo(s);
+    const tieneFallos=s.fallos&&s.fallos.length>0;
+    let cls='stop-card ';
+    if(s.completada)cls+='completed';
+    else if(esAyer)cls+=sem==='aplazado-crit'?'aplazado-critical':'aplazado-priority';
+    else if(esHoy)cls+='aplazado-card';
+    else if(tieneFallos)cls+='fallida';
+    else cls+=s.urgente!=='normal'?`urg-${s.urgente}`:'normal-card';
+    let estadoBadge='';
+    if(esAyer)estadoBadge=sem==='aplazado-crit'?'<span class="tag t-aplazado-crit">🔴 ENTREGAR HOY — ÚLTIMA VEZ</span>':'<span class="tag t-aplazado-warn">🟡 APLAZADO — Prioridad hoy</span>';
+    else if(esHoy)estadoBadge='<span class="tag t-aplazado">🟢 APLAZADO</span>';
+    const fallosHtml=tieneFallos?s.fallos.map(f=>`<div class="fallo-item">⚠️ Intento ${f.intento} — ${f.hora}${f.nota?' — '+esc(f.nota):''}</div>`).join(''):'';
+    const esRecogida=s.urgente==='rec14'||s.urgente==='rec18';
+    const btnAplazar=!esRecogida&&s.urgente!=='normal'&&!s.completada?`<button onclick="aplazar(${oi})" class="btn-aplazar ${sem}" ${s.aplazado&&sem==='aplazado-ok'?'disabled':''}>${s.aplazado?'✅ Aplazado':'🟢 Aplazar'}</button>`:'';
+    const btnRecoger=esRecogida&&!s.completada?`<button onclick="marcarRecogida(${oi})" class="btn-aplazar ${s.recogido?'aplazado-ok':'sem-green'}" ${s.recogido?'disabled':''}>${s.recogido?'✅ Recogido':'📤 Marcar Recogida'}</button>`:'';
+    return `<div class="${cls}">
+      <div class="stop-num ${s.completada?'done':''}">${s.completada?'✓':i+1}</div>
+      <div class="stop-body">
+        <div class="stop-id" style="color:${getIdColor(s.urgente)}">#${String(s.pkgId||0).padStart(3,'0')}</div>
+        <div class="stop-dir">${esc(s.direccion)}</div>
+        <div class="stop-tags">
+          ${urgBadge[s.urgente]||''}
+          ${isStart(s)?'<span class="tag bstart">🟢 INICIO</span>':''}
+          ${estadoBadge}
+          ${tieneFallos?`<span class="tag" style="background:rgba(255,23,68,0.12);color:var(--fail);border-color:var(--fail)">⚠️ ${s.fallos.length} FALLO${s.fallos.length>1?'S':''}</span>`:''}
+        </div>
+        ${fallosHtml}
+        ${s.nota?`<div class="stop-note">📝 ${esc(s.nota)}</div>`:''}
+        ${!s.completada?`<div class="stop-btns">
+          <div class="stop-btns-row">
+            <button onclick="navegar(${oi})" class="btn-nav">🧭 Navegar</button>
+            ${!esRecogida?`<button onclick="openFallo(${oi})" class="btn-fallo-card">⚠️ Fallo</button>`:''}
+          </div>
+          ${btnAplazar?`<div class="stop-btns-row">${btnAplazar}</div>`:''}
+          ${btnRecoger?`<div class="stop-btns-row">${btnRecoger}</div>`:''}
+        </div>`:''}
+      </div>
+      <div class="stop-actions">
+        <button class="icon-btn" onclick="openNota(${oi})">📝</button>
+        <button class="icon-btn" onclick="toggle(${oi})" style="color:${!s.completada?'var(--done)':'var(--muted)'}">${s.completada?'↩':'✓'}</button>
+        <button class="icon-btn" onclick="del(${oi})" style="color:var(--fail)">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  updateStats();
+}
+
+function aplazar(i){if(stops[i].aplazado)return;stops[i].aplazado=true;stops[i].fechaAplazado=getTodayStr();save();render();toast('🟢 Aplazado correctamente','#00e676','#060d1a');}
+
+// ── MARCAR RECOGIDA + AVISO CERRAR PDA ──
+function marcarRecogida(i){
+  stops[i].recogido=true;
+  stops[i].horaRecogida=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  save();render();
+  // Popup rojo especial — cerrar recogida en PDA
+  mostrarAlert(
+    stops[i].horaRecogida,
+    '⚠️ Cierra la recogida en la PDA',
+    '',
+    `Recogida completada a las ${stops[i].horaRecogida}. IMPORTANTE — Asegúrate de cerrar esta recogida en la PDA ahora mismo antes de continuar. Si no la cierras no la cobrarás.`,
+    `Atención. Asegúrate de cerrar la recogida en la PDA ahora mismo. Si no cierras la recogida no la cobrarás.`
+  );
+}
+function del(i){stops.splice(i,1);save();render();}
+function toggle(i){stops[i].completada=!stops[i].completada;if(stops[i].completada)stops[i].aplazado=false;save();render();}
+function navegar(i){window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stops[i].direccion)}&travelmode=driving&dir_action=navigate`,'_blank');}
+
+function updateStats(){
+  const total=stops.length,done=stops.filter(s=>s.completada).length;
+  const aplazados=stops.filter(s=>s.aplazado&&!s.completada).length;
+  const pendientes=stops.filter(s=>!s.completada&&!s.aplazado).length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-txt').textContent=`${done} / ${total} entregados`;
+  const ae=document.getElementById('prog-aplazado');
+  if(aplazados>0){ae.style.display='block';ae.textContent=`🟢 ${aplazados} aplazado${aplazados>1?'s':''}`;}
+  else ae.style.display='none';
+  document.getElementById('stat-par').textContent=pendientes;
+}
+
+// ── MODAL OPTIMIZAR ──
+function showOptModal(){
+  const active=stops.filter(s=>!s.completada);
+  if(active.length<2){alert('Necesitas al menos 2 paradas pendientes.');return;}
+  const si=document.getElementById('sel-inicio');si.innerHTML='';
+  active.forEach((s,i)=>{si.innerHTML+=`<option value="${s.id}">${i+1}. ${s.direccion.substring(0,42)}${s.direccion.length>42?'...':''}</option>`;});
+  si.value=active[0].id;
+  document.getElementById('modal-opt').classList.add('open');
+}
+
+function getStartStop(){
+  const active=stops.filter(s=>!s.completada);
+  const startId=Number(document.getElementById('sel-inicio').value);
+  return {startStop:active.find(s=>s.id===startId),rest:active.filter(s=>s.id!==startId)};
+}
+
+function optimizarDistancia(){
+  closeModal('opt');
+  if(!mapsLoaded||!dirService){alert('El mapa está cargando.');return;}
+  const {startStop,rest}=getStartStop();
+  if(!rest.length){alert('Necesitas al menos 2 paradas.');return;}
+  const lastStop=rest[rest.length-1];
+  dirService.route({origin:startStop.direccion,destination:lastStop.direccion,waypoints:rest.slice(0,-1).map(s=>({location:s.direccion,stopover:true})),optimizeWaypoints:true,travelMode:google.maps.TravelMode.DRIVING,region:'es'},(result,status)=>{
+    if(status==='OK'){
+      dirRenderer.setDirections(result);
+      let d=0,t=0;result.routes[0].legs.forEach(l=>{d+=l.distance.value;t+=l.duration.value;});
+      document.getElementById('stat-dist').textContent=(d/1000).toFixed(1)+' km';
+      const m=Math.round(t/60);document.getElementById('stat-time').textContent=m<60?m+' min':Math.floor(m/60)+'h '+(m%60)+'m';
+      const wo=result.routes[0].waypoint_order;
+      const reordered=[startStop,...wo.map(i=>rest.slice(0,-1)[i]),lastStop];
+      stops=[...reordered,...stops.filter(s=>s.completada)];
+      save();render();toast('🗺️ Ruta más corta optimizada','#00b0ff','#fff');
+    }else alert('Error: '+status);
+  });
+}
+
+function optimizarUrgencia(){
+  closeModal('opt');
+  if(!mapsLoaded||!dirService){alert('El mapa está cargando.');return;}
+  const {startStop,rest}=getStartStop();
+  const b10=rest.filter(s=>s.urgente==='10');
+  const b12=rest.filter(s=>s.urgente==='12');
+  const b14=rest.filter(s=>s.urgente==='14');
+  const b19=rest.filter(s=>s.urgente==='19');
+  const bN=rest.filter(s=>s.urgente==='normal');
+  const ruta=[startStop,...b10,...b12,...b14,...b19,...bN];
+  if(ruta.length<2){alert('Necesitas al menos 2 paradas.');return;}
+  const last=ruta[ruta.length-1];
+  dirService.route({origin:ruta[0].direccion,destination:last.direccion,waypoints:ruta.slice(1,-1).map(s=>({location:s.direccion,stopover:true})),optimizeWaypoints:false,travelMode:google.maps.TravelMode.DRIVING,region:'es'},(result,status)=>{
+    if(status==='OK'){
+      dirRenderer.setDirections(result);
+      let d=0,t=0;result.routes[0].legs.forEach(l=>{d+=l.distance.value;t+=l.duration.value;});
+      document.getElementById('stat-dist').textContent=(d/1000).toFixed(1)+' km';
+      const m=Math.round(t/60);document.getElementById('stat-time').textContent=m<60?m+' min':Math.floor(m/60)+'h '+(m%60)+'m';
+      stops=[...ruta,...stops.filter(s=>s.completada)];
+      save();render();toast('⏰ Ruta por urgencia — 10h→12h→14h→19h','#ff7b00','#060d1a');
+    }else alert('Error: '+status);
+  });
+}
+
+// ── NOTAS ──
+function openNota(i){editingNoteIdx=i;document.getElementById('modal-dir').textContent=stops[i].direccion;document.getElementById('modal-textarea').value=stops[i].nota||'';document.getElementById('modal-nota').classList.add('open');setTimeout(()=>document.getElementById('modal-textarea').focus(),100);}
+function saveNote(){if(editingNoteIdx===null)return;stops[editingNoteIdx].nota=document.getElementById('modal-textarea').value.trim();save();render();closeModal('nota');}
+
+// ── FALLOS ──
+function openFallo(i){falloIdx=i;document.getElementById('modal-fallo-dir').textContent=stops[i].direccion;document.getElementById('modal-fallo-textarea').value='';document.getElementById('modal-fallo').classList.add('open');setTimeout(()=>document.getElementById('modal-fallo-textarea').focus(),100);}
+function saveFallo(){
+  if(falloIdx===null)return;
+  if(!stops[falloIdx].fallos)stops[falloIdx].fallos=[];
+  const n=new Date(),hora=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');
+  stops[falloIdx].fallos.push({intento:stops[falloIdx].fallos.length+1,hora,nota:document.getElementById('modal-fallo-textarea').value.trim()});
+  save();render();closeModal('fallo');
+}
+
+function closeModal(w){
+  document.getElementById('modal-'+w).classList.remove('open');
+  if(w==='nota')editingNoteIdx=null;
+  if(w==='fallo')falloIdx=null;
+}
+['modal-nota','modal-fallo','modal-import','modal-opt'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal(id.replace('modal-',''));});
+});
+
+function clearRoute(){if(dirRenderer)dirRenderer.setDirections({routes:[]});document.getElementById('stat-dist').textContent='—';document.getElementById('stat-time').textContent='—';}
+function newDay(){if(!confirm('¿Empezar nueva jornada? Se borrarán todas las paradas.'))return;stops=[];save();render();updateStats();clearRoute();}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── INIT ──
+load();updateDate();render();updateStats();
+if(stops.length>0)loadMaps();
+document.getElementById('input-dir').addEventListener('keydown',e=>{if(e.key==='Enter')addStop();});
+setInterval(render,60000);
+setTimeout(checkOnOpen,1500);
+</script>
+</body>
+</html>
