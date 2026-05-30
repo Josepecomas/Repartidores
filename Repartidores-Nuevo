@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Rutas Activas — Repartidor</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#060d1a; --surface:#0a1628; --surface2:#0f1f38;
+  --border:#1e3556; --border2:#2a4a70;
+  --orange:#ff7b00; --orange2:#ff9a33;
+  --nav-green:#39ff14;
+  --urg12:#ff8c00; --urg14:#ff1744; --urg19:#00b0ff;
+  --rec14:#9c27b0; --rec18:#e91e63;
+  --done:#00e676; --fail:#ff1744; --amber:#ffca28;
+  --text:#e3f0ff; --text2:#a8c4e0; --muted:#4a6a8a; --white:#ffffff;
+  --font-head:'Exo 2',sans-serif; --font-mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+
+/* ── PÁGINA COMPLETA ── */
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-head);display:flex;flex-direction:column;}
+
+/* ── HEADER ── */
+header{flex-shrink:0;background:var(--surface);border-bottom:2px solid var(--border2);}
+.header-main{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 8px;}
+.brand-tag{font-family:var(--font-mono);font-size:8px;letter-spacing:4px;color:var(--urg19);text-transform:uppercase;opacity:0.7;}
+.brand-name{font-size:22px;font-weight:900;color:var(--white);letter-spacing:2px;text-transform:uppercase;line-height:1;}
+.brand-name span{color:var(--orange);}
+.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.clock-date{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--urg19);letter-spacing:2px;}
+.clock-day{font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+.btn-voz{background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--muted);font-family:var(--font-mono);font-size:9px;padding:3px 7px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;}
+
+/* ── 4 CAJITAS ALARMA ── */
+.alarm-strip{display:flex;border-top:1px solid var(--border);}
+.alarm-cell{flex:1;padding:8px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-right:1px solid var(--border);position:relative;overflow:hidden;transition:all 0.3s;}
+.alarm-cell:last-child{border-right:none;}
+.alarm-cell.ok{background:var(--surface2);}
+.alarm-cell.warn{background:rgba(255,202,40,0.1);animation:cellWarn 1.5s infinite;}
+.alarm-cell.alert{background:rgba(255,23,68,0.12);animation:cellAlert 0.7s infinite;}
+@keyframes cellWarn{0%,100%{background:rgba(255,202,40,0.1)}50%{background:rgba(255,202,40,0.22)}}
+@keyframes cellAlert{0%,100%{background:rgba(255,23,68,0.12)}50%{background:rgba(255,23,68,0.28)}}
+.alarm-cell::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--border);}
+.alarm-cell.warn::after{background:var(--amber);animation:barP 1.5s infinite;}
+.alarm-cell.alert::after{background:var(--fail);animation:barP 0.7s infinite;}
+@keyframes barP{0%,100%{opacity:1}50%{opacity:0.2}}
+.alarm-icon{font-size:16px;line-height:1;}
+.alarm-time{font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:1px;line-height:1;}
+.alarm-cell.ok .alarm-time{color:var(--muted);}
+.alarm-cell.warn .alarm-time{color:var(--amber);}
+.alarm-cell.alert .alarm-time{color:var(--fail);}
+.alarm-desc{font-family:var(--font-mono);font-size:7px;letter-spacing:0.5px;text-transform:uppercase;text-align:center;line-height:1.3;}
+.alarm-cell.ok .alarm-desc{color:var(--muted);}
+.alarm-cell.warn .alarm-desc{color:var(--amber);}
+.alarm-cell.alert .alarm-desc{color:var(--fail);}
+
+/* ── CUERPO PRINCIPAL — FLEX COLUMN ── */
+.app-body{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+
+/* ── SECCIÓN AÑADIR ── */
+.add-section{flex-shrink:0;background:var(--surface2);border-bottom:1px solid var(--border);}
+.add-section-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;user-select:none;}
+.box-title{font-family:var(--font-mono);font-size:8px;letter-spacing:4px;color:var(--urg19);text-transform:uppercase;display:flex;align-items:center;gap:8px;flex:1;}
+.box-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.btn-toggle-add{background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--urg19);font-size:14px;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform 0.25s,background 0.15s;flex-shrink:0;}
+.btn-toggle-add:hover{background:rgba(0,176,255,0.1);}
+.btn-toggle-add.collapsed{transform:rotate(-90deg);}
+.add-section-body{padding:0 12px 10px;overflow:hidden;transition:max-height 0.3s ease,opacity 0.25s ease,padding 0.25s ease;}
+.add-section-body.hidden{max-height:0!important;opacity:0;padding-bottom:0;pointer-events:none;}
+
+input[type="text"]{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:12px 13px;color:var(--white);font-family:var(--font-mono);font-size:14px;outline:none;transition:all 0.2s;margin-bottom:8px;}
+input[type="text"]:focus{border-color:var(--urg19);box-shadow:0 0 0 3px rgba(0,176,255,0.12);}
+input[type="text"]::placeholder{color:var(--muted);}
+
+/* BOTONES URGENTE — 2 columnas sin Normal */
+.urg-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;}
+.urg-btn{padding:11px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-family:var(--font-mono);font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:all 0.15s;}
+.urg-btn:hover{border-color:var(--orange);color:var(--orange);}
+.urg-btn.btn-jornada{border-color:rgba(255,202,40,0.35);color:var(--amber);}
+.urg-btn.btn-jornada:hover{background:rgba(255,202,40,0.15);border-color:var(--amber);color:var(--amber);}
+.urg-btn[data-urg="12"].sel{background:rgba(255,140,0,0.15);border-color:var(--urg12);color:var(--urg12);}
+.urg-btn[data-urg="14"].sel{background:rgba(255,23,68,0.15);border-color:var(--urg14);color:var(--urg14);}
+.urg-btn[data-urg="19"].sel{background:rgba(0,176,255,0.15);border-color:var(--urg19);color:var(--urg19);}
+.urg-btn[data-urg="rec14"].sel{background:rgba(156,39,176,0.15);border-color:var(--rec14);color:var(--rec14);}
+.urg-btn[data-urg="rec18"].sel{background:rgba(233,30,99,0.15);border-color:var(--rec18);color:var(--rec18);}
+
+.btn-row{display:flex;gap:6px;margin-bottom:6px;}
+.btn-add{flex:1;padding:11px;background:rgba(255,123,0,0.12);border:1px solid var(--orange);border-radius:6px;color:var(--orange);font-family:var(--font-head);font-size:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;}
+.btn-add:hover{background:var(--orange);color:var(--bg);}
+.btn-opt{flex:1;padding:11px;background:var(--orange);border:1px solid var(--orange);border-radius:6px;color:var(--bg);font-family:var(--font-head);font-size:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;box-shadow:0 0 16px rgba(255,123,0,0.25);}
+.btn-opt:hover{background:var(--orange2);}
+.btn-opt:disabled{background:var(--surface);color:var(--muted);border-color:var(--border);box-shadow:none;cursor:not-allowed;}
+.btn-import{width:100%;padding:8px;background:transparent;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-family:var(--font-mono);font-size:11px;letter-spacing:1px;cursor:pointer;transition:all 0.15s;text-transform:uppercase;}
+.btn-import:hover{border-color:var(--urg19);color:var(--urg19);}
+
+/* ── BARRA DE PROGRESO Y STATS ── */
+.stats-bar{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:5px 12px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.stat-item{display:flex;align-items:center;gap:4px;}
+.stat-lbl{font-family:var(--font-mono);font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
+.stat-val{font-family:var(--font-head);font-size:15px;font-weight:900;color:var(--orange);}
+.prog-track{flex:1;min-width:60px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--urg19),var(--nav-green));border-radius:2px;transition:width 0.4s;}
+.prog-txt{font-family:var(--font-mono);font-size:10px;color:var(--muted);white-space:nowrap;}
+.prog-aplazado{font-family:var(--font-mono);font-size:10px;color:var(--done);white-space:nowrap;font-weight:700;display:none;}
+
+/* ── LISTA DE PARADAS — OCUPA TODO EL ESPACIO RESTANTE ── */
+.stops-list{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;min-height:0;min-height:50vh;}
+.stops-list::-webkit-scrollbar{width:3px;}
+.stops-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* ── BARRA INFERIOR ── */
+.bottom-bar{flex-shrink:0;padding:8px 12px;border-top:1px solid var(--border);background:var(--surface);}
+.btn-new-day{width:100%;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:2px;padding:9px;cursor:pointer;text-transform:uppercase;transition:all 0.15s;}
+.btn-new-day:hover{border-color:var(--amber);color:var(--amber);}
+
+/* ── LEGEND ── */
+.legend{flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;padding:4px 12px;background:var(--bg);border-bottom:1px solid var(--border);}
+.legend-item{display:flex;align-items:center;gap:3px;font-family:var(--font-mono);font-size:9px;color:var(--muted);}
+.legend-dot{width:6px;height:6px;border-radius:1px;flex-shrink:0;}
+
+/* ── TARJETA PARADA ── */
+.stop-card{background:var(--surface2);border:1px solid var(--border);border-left:5px solid var(--border);border-radius:8px;padding:12px 12px 12px 14px;display:flex;align-items:flex-start;gap:10px;transition:all 0.15s;}
+.stop-card.urg-12{border-left-color:var(--urg12);}
+.stop-card.urg-14{border-left-color:var(--urg14);}
+.stop-card.urg-19{border-left-color:var(--urg19);}
+.stop-card.urg-rec14{border-left-color:var(--rec14);}
+.stop-card.urg-rec18{border-left-color:var(--rec18);}
+.stop-card.normal-card{border-left-color:var(--done);}
+.stop-card.completed{opacity:0.35;}
+.stop-card.aplazado-card{border-left-color:var(--done);background:rgba(0,230,118,0.06);border-color:rgba(0,230,118,0.2);}
+.stop-card.aplazado-priority{border-left-color:var(--amber);background:rgba(255,202,40,0.06);border-color:rgba(255,202,40,0.25);}
+.stop-card.aplazado-critical{border-left-color:var(--fail);background:rgba(255,23,68,0.06);animation:cardCrit 0.8s infinite;}
+@keyframes cardCrit{0%,100%{background:rgba(255,23,68,0.06)}50%{background:rgba(255,23,68,0.14)}}
+.stop-card.fallida{border-left-color:var(--fail);background:rgba(255,23,68,0.04);}
+.stop-num{font-family:var(--font-mono);font-size:20px;font-weight:700;color:var(--orange);min-width:28px;line-height:1;padding-top:3px;}
+.stop-num.done{color:var(--done);}
+.stop-body{flex:1;min-width:0;}
+.stop-id{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:2px;margin-bottom:4px;text-transform:uppercase;}
+.stop-dir{font-size:15px;font-weight:700;color:var(--white);white-space:normal;word-break:break-word;line-height:1.3;margin-bottom:6px;}
+.stop-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;}
+.tag{font-family:var(--font-mono);font-size:9px;font-weight:700;padding:3px 8px;border-radius:3px;letter-spacing:1px;text-transform:uppercase;border:1px solid;}
+.b12{background:rgba(255,140,0,0.12);color:var(--urg12);border-color:var(--urg12);}
+.b14{background:rgba(255,23,68,0.12);color:var(--urg14);border-color:var(--urg14);}
+.b19{background:rgba(0,176,255,0.12);color:var(--urg19);border-color:var(--urg19);}
+.brec14{background:rgba(156,39,176,0.12);color:var(--rec14);border-color:var(--rec14);}
+.brec18{background:rgba(233,30,99,0.12);color:var(--rec18);border-color:var(--rec18);}
+.bstart{background:rgba(0,230,118,0.12);color:var(--done);border-color:var(--done);}
+.t-aplazado{background:rgba(0,230,118,0.2);color:var(--done);border-color:var(--done);padding:3px 10px;animation:tagGlow 2s infinite;}
+@keyframes tagGlow{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(0,230,118,0.4)}}
+.t-aplazado-warn{background:rgba(255,202,40,0.15);color:var(--amber);border-color:var(--amber);padding:3px 10px;}
+.t-aplazado-crit{background:rgba(255,23,68,0.15);color:var(--fail);border-color:var(--fail);padding:3px 10px;animation:tagCrit 0.6s infinite;}
+@keyframes tagCrit{0%,100%{opacity:1}50%{opacity:0.5}}
+.stop-note{font-family:var(--font-mono);font-size:11px;color:var(--amber);margin-top:4px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fallo-item{font-family:var(--font-mono);font-size:10px;color:var(--fail);margin-top:3px;padding:3px 7px;background:rgba(255,23,68,0.08);border-radius:3px;border-left:2px solid var(--fail);}
+.btn-nav{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;background:rgba(57,255,20,0.12);border:1px solid var(--nav-green);border-radius:5px;color:var(--nav-green);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;box-shadow:0 0 10px rgba(57,255,20,0.12);}
+.btn-nav:hover{background:var(--nav-green);color:var(--bg);}
+.btn-fallo-card{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;background:transparent;border:1px solid rgba(255,23,68,0.35);border-radius:5px;color:rgba(255,23,68,0.7);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;}
+.btn-fallo-card:hover{background:var(--fail);color:#fff;border-color:var(--fail);}
+.btn-aplazar{display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border-radius:5px;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid;transition:all 0.2s;}
+.btn-aplazar.sem-green{background:rgba(0,230,118,0.12);border-color:var(--done);color:var(--done);}
+.btn-aplazar.sem-green:hover{background:var(--done);color:var(--bg);}
+.btn-aplazar.sem-green-blink{background:rgba(0,230,118,0.12);border-color:var(--done);color:var(--done);animation:semGB 1.5s infinite;}
+@keyframes semGB{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,0)}50%{box-shadow:0 0 14px 4px rgba(0,230,118,0.4)}}
+.btn-aplazar.sem-amber{background:rgba(255,202,40,0.15);border-color:var(--amber);color:var(--amber);animation:semA 1s infinite;}
+@keyframes semA{0%,100%{box-shadow:0 0 0 0 rgba(255,202,40,0)}50%{box-shadow:0 0 16px 4px rgba(255,202,40,0.5)}}
+.btn-aplazar.sem-red{background:rgba(255,23,68,0.2);border-color:var(--fail);color:var(--fail);animation:semR 0.5s infinite;}
+@keyframes semR{0%,100%{box-shadow:0 0 0 0 rgba(255,23,68,0);background:rgba(255,23,68,0.2)}50%{box-shadow:0 0 18px 5px rgba(255,23,68,0.6);background:rgba(255,23,68,0.38)}}
+.btn-aplazar.aplazado-ok{background:rgba(0,230,118,0.2);border-color:var(--done);color:var(--done);cursor:default;}
+.stop-btns{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+.stop-btns-row{display:flex;gap:5px;flex-wrap:wrap;}
+.stop-actions{display:flex;flex-direction:column;gap:4px;flex-shrink:0;}
+.icon-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:5px 7px;cursor:pointer;font-size:12px;transition:all 0.15s;}
+.icon-btn:hover{border-color:var(--urg19);color:var(--urg19);}
+.empty-stops{text-align:center;padding:32px 16px;color:var(--muted);font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;line-height:2;}
+.empty-icon{font-size:36px;opacity:0.2;margin-bottom:8px;}
+.notif-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:14px 22px;border-radius:10px;font-family:var(--font-head);font-size:15px;font-weight:800;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.5);max-width:90vw;text-align:center;letter-spacing:1px;}
+
+/* ── POPUPS ── */
+.popup-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9000;align-items:center;justify-content:center;padding:20px;}
+.popup-overlay.open{display:flex;}
+.popup{width:100%;max-width:390px;border-radius:16px;padding:28px 22px;text-align:center;animation:popIn 0.3s ease;}
+@keyframes popIn{from{transform:scale(0.85);opacity:0}to{transform:scale(1);opacity:1}}
+.popup.warn{background:#1a1400;border:3px solid var(--amber);box-shadow:0 0 50px rgba(255,202,40,0.35);}
+.popup.alert{background:#1a0005;border:3px solid var(--fail);box-shadow:0 0 50px rgba(255,23,68,0.45);animation:popIn 0.3s ease,shake 0.5s ease 0.3s;}
+.popup.success{background:#001a0a;border:3px solid var(--done);box-shadow:0 0 50px rgba(0,230,118,0.35);}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.popup-icon{font-size:52px;margin-bottom:8px;}
+.popup-time{font-family:var(--font-head);font-size:50px;font-weight:900;letter-spacing:3px;margin-bottom:6px;line-height:1;}
+.popup.warn .popup-time{color:var(--amber);}
+.popup.alert .popup-time{color:var(--fail);text-shadow:0 0 25px rgba(255,23,68,0.6);}
+.popup.success .popup-time{color:var(--done);}
+.popup-title{font-family:var(--font-head);font-size:18px;font-weight:900;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+.popup.warn .popup-title{color:var(--amber);}
+.popup.alert .popup-title{color:var(--fail);}
+.popup.success .popup-title{color:var(--done);}
+.popup-sancion{font-family:var(--font-head);font-size:42px;font-weight:900;color:var(--fail);margin:8px 0;text-shadow:0 0 25px rgba(255,23,68,0.7);}
+.popup-msg{font-family:var(--font-mono);font-size:12px;line-height:1.7;margin-bottom:20px;}
+.popup.warn .popup-msg{color:#c8a800;}
+.popup.alert .popup-msg{color:#ff7070;}
+.popup.success .popup-msg{color:#00b356;}
+.popup-btn{width:100%;padding:14px;border:none;border-radius:10px;font-family:var(--font-head);font-size:14px;font-weight:900;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;}
+.popup.warn .popup-btn{background:var(--amber);color:#1a1400;}
+.popup.alert .popup-btn{background:var(--fail);color:#fff;box-shadow:0 0 20px rgba(255,23,68,0.4);}
+.popup.success .popup-btn{background:var(--done);color:#001a0a;}
+
+/* ── MODALES ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:20px;width:100%;max-width:440px;border-top:3px solid var(--orange);}
+.modal h3{font-family:var(--font-head);font-size:17px;font-weight:800;color:var(--white);margin-bottom:4px;}
+.modal-sub{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:12px;}
+.modal textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:10px;color:var(--text);font-family:var(--font-mono);font-size:13px;resize:vertical;min-height:80px;outline:none;}
+.modal textarea:focus{border-color:var(--urg19);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;}
+.btn-mc{padding:9px 14px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;}
+.btn-ms{padding:9px 14px;background:var(--orange);border:1px solid var(--orange);border-radius:6px;color:var(--bg);font-family:var(--font-head);font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;}
+.btn-mf{padding:9px 14px;background:var(--fail);border:1px solid var(--fail);border-radius:6px;color:#fff;font-family:var(--font-head);font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;}
+select{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:9px;color:var(--white);font-family:var(--font-mono);font-size:12px;outline:none;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-main">
+    <div>
+      <div class="brand-tag">// sistema de reparto</div>
+      <div class="brand-name">RUTAS <span>ACTIVAS</span></div>
+    </div>
+    <div class="header-right">
+      <div class="clock-date" id="hoy-fecha"></div>
+      <div class="clock-day" id="hoy-dia"></div>
+      <button class="btn-voz" onclick="showVozModal()">⚙️ Voz</button>
+    </div>
+  </div>
+  <div class="alarm-strip">
+    <div class="alarm-cell ok" id="al-aviso">
+      <div class="alarm-icon">⚡</div>
+      <div class="alarm-time" id="al-aviso-time">—</div>
+      <div class="alarm-desc">Aviso<br>Aplaz.</div>
+    </div>
+    <div class="alarm-cell ok" id="al-12">
+      <div class="alarm-icon">🕐</div>
+      <div class="alarm-time">11:15</div>
+      <div class="alarm-desc">Aplazar<br>12h</div>
+    </div>
+    <div class="alarm-cell ok" id="al-14">
+      <div class="alarm-icon">🕑</div>
+      <div class="alarm-time">13:15</div>
+      <div class="alarm-desc">Aplazar<br>14h</div>
+    </div>
+    <div class="alarm-cell ok" id="al-19">
+      <div class="alarm-icon">🕕</div>
+      <div class="alarm-time">18:15</div>
+      <div class="alarm-desc">Aplazar<br>19h</div>
+    </div>
+  </div>
+</header>
+
+<!-- CUERPO PRINCIPAL -->
+<div class="app-body">
+
+  <!-- AÑADIR PARADA -->
+  <div class="add-section">
+    <div class="add-section-header" onclick="toggleAddSection()">
+      <div class="box-title">➕ nueva parada</div>
+      <button class="btn-toggle-add" id="btn-toggle-add">▼</button>
+    </div>
+    <div class="add-section-body" id="add-section-body">
+      <input type="text" id="input-dir" placeholder="Calle Extremadura 4..." autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <div class="urg-grid">
+        <button class="urg-btn sel" data-urg="12" onclick="selUrg('12')">🟠 Urgente 12h</button>
+        <button class="urg-btn" data-urg="14" onclick="selUrg('14')">🔴 Urgente 14h</button>
+        <button class="urg-btn" data-urg="19" onclick="selUrg('19')">🔵 Urgente 19h</button>
+        <button class="urg-btn" data-urg="rec14" onclick="selUrg('rec14')">📤 Recog. 14h</button>
+        <button class="urg-btn" data-urg="rec18" onclick="selUrg('rec18')">📤 Recog. 18h</button>
+        <button class="urg-btn btn-jornada" onclick="newDay()">🔄 Nueva Jornada</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn-add" onclick="addStop()">+ Añadir</button>
+        <button class="btn-opt" id="btn-opt" onclick="showOptModal()" disabled>🗺 Optimizar</button>
+      </div>
+      <button class="btn-import" onclick="showImportModal()">📋 Importar varias direcciones</button>
+    </div>
+  </div>
+
+  <!-- LEYENDA -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--urg12)"></div>12h</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--urg14)"></div>14h</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--urg19)"></div>19h</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--rec14)"></div>Recog.14h</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--rec18)"></div>Recog.18h</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--nav-green)"></div>Navegar</div>
+  </div>
+
+  <!-- STATS + PROGRESO -->
+  <div class="stats-bar">
+    <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="prog-txt" id="prog-txt">0 / 0</div>
+    <div class="prog-aplazado" id="prog-aplazado">🟢 0 aplazados</div>
+    <div class="stat-item"><span class="stat-lbl">Pend.</span><span class="stat-val" id="stat-par">0</span></div>
+    <div class="stat-item"><span class="stat-lbl">Dist.</span><span class="stat-val" id="stat-dist">—</span></div>
+    <div class="stat-item"><span class="stat-lbl">Tiempo</span><span class="stat-val" id="stat-time">—</span></div>
+  </div>
+
+  <!-- LISTA DE PARADAS — OCUPA TODO EL ESPACIO -->
+  <div class="stops-list" id="stops-list">
+    <div class="empty-stops"><div class="empty-icon">📦</div>Añade paradas<br>y pulsa OPTIMIZAR</div>
+  </div>
+
+
+</div>
+
+<!-- POPUPS -->
+<div class="popup-overlay" id="popup-warn">
+  <div class="popup warn">
+    <div class="popup-icon">⚠️</div>
+    <div class="popup-time" id="pw-time"></div>
+    <div class="popup-title" id="pw-title"></div>
+    <div class="popup-msg" id="pw-msg"></div>
+    <button class="popup-btn" onclick="cerrarPopup('warn')">✓ Entendido</button>
+  </div>
+</div>
+<div class="popup-overlay" id="popup-alert">
+  <div class="popup alert">
+    <div class="popup-icon">🚨</div>
+    <div class="popup-time" id="pa-time"></div>
+    <div class="popup-title" id="pa-title"></div>
+    <div class="popup-sancion" id="pa-sancion" style="display:none"></div>
+    <div class="popup-msg" id="pa-msg"></div>
+    <button class="popup-btn" onclick="cerrarPopup('alert')">⚠️ Confirmo — Aplazando ahora</button>
+  </div>
+</div>
+<div class="popup-overlay" id="popup-success">
+  <div class="popup success">
+    <div class="popup-icon">✅</div>
+    <div class="popup-time" id="ps-time"></div>
+    <div class="popup-title" id="ps-title"></div>
+    <div class="popup-msg" id="ps-msg"></div>
+    <button class="popup-btn" onclick="cerrarPopup('success')">👍 Perfecto</button>
+  </div>
+</div>
+
+<!-- MODALES -->
+<div class="modal-overlay" id="modal-nota">
+  <div class="modal">
+    <h3>📝 Nota</h3>
+    <div class="modal-sub" id="modal-dir"></div>
+    <textarea id="modal-textarea" placeholder="Puerta cerrada, conserjería..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-mc" onclick="closeModal('nota')">Cancelar</button>
+      <button class="btn-ms" onclick="saveNote()">Guardar</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-fallo">
+  <div class="modal" style="border-top-color:var(--fail)">
+    <h3 style="color:var(--fail)">⚠️ Fallo de Entrega</h3>
+    <div class="modal-sub" id="modal-fallo-dir"></div>
+    <textarea id="modal-fallo-textarea" placeholder="Sin respuesta · Nadie en casa..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-mc" onclick="closeModal('fallo')">Cancelar</button>
+      <button class="btn-mf" onclick="saveFallo()">⚠️ Registrar Fallo</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-import">
+  <div class="modal">
+    <h3>📋 Importar Direcciones</h3>
+    <div class="modal-sub">Una dirección por línea</div>
+    <textarea id="import-textarea" style="min-height:130px;font-size:12px;line-height:1.6;" placeholder="Calle Extremadura 4&#10;Avenida Juan Carlos 21&#10;Calle Mayor 8..."></textarea>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin:8px 0 6px;">Urgente por defecto:</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;">
+      <button class="urg-btn sel" data-iurg="12" onclick="selImpUrg('12')">🟠 12h</button>
+      <button class="urg-btn" data-iurg="14" onclick="selImpUrg('14')">🔴 14h</button>
+      <button class="urg-btn" data-iurg="19" onclick="selImpUrg('19')">🔵 19h</button>
+      <button class="urg-btn" data-iurg="rec14" onclick="selImpUrg('rec14')">📤 Recog.14h</button>
+      <button class="urg-btn" data-iurg="rec18" onclick="selImpUrg('rec18')">📤 Recog.18h</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-mc" onclick="closeModal('import')">Cancelar</button>
+      <button class="btn-ms" onclick="importarDirecciones()">📋 Importar</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-opt">
+  <div class="modal">
+    <h3>🗺 Optimizar Ruta</h3>
+    <div class="modal-sub">Punto de inicio</div>
+    <select id="sel-inicio"></select>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin:10px 0 8px;">¿Cómo optimizar?</div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="optimizarDistancia()" style="flex:1;padding:11px;background:rgba(0,176,255,0.12);border:1px solid var(--urg19);border-radius:8px;color:var(--urg19);font-family:var(--font-head);font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;line-height:1.4;">🗺️ Por Distancia<br><span style="font-size:10px;font-weight:400;opacity:0.8">Ruta más corta</span></button>
+      <button onclick="optimizarUrgencia()" style="flex:1;padding:11px;background:rgba(255,123,0,0.12);border:1px solid var(--orange);border-radius:8px;color:var(--orange);font-family:var(--font-head);font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;line-height:1.4;">⏰ Por Urgencia<br><span style="font-size:10px;font-weight:400;opacity:0.8">12h→14h→19h</span></button>
+    </div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="btn-mc" onclick="closeModal('opt')">Cancelar</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-voz">
+  <div class="modal">
+    <h3>⚙️ Configuración de Voz</h3>
+    <div class="modal-sub">Elige la voz para los avisos</div>
+    <select id="sel-voz" style="margin-bottom:10px;"></select>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:6px;">Velocidad:</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <input type="range" id="voz-rate" min="0.5" max="1.5" step="0.1" value="0.85" style="flex:1;accent-color:var(--orange);">
+      <span id="voz-rate-val" style="font-family:var(--font-mono);font-size:12px;color:var(--orange);min-width:30px">0.85</span>
+    </div>
+    <button onclick="previewVoz()" style="width:100%;padding:10px;background:rgba(0,176,255,0.12);border:1px solid var(--urg19);border-radius:6px;color:var(--urg19);font-family:var(--font-head);font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-bottom:10px;">🔊 Escuchar prueba</button>
+    <div class="modal-actions">
+      <button class="btn-mc" onclick="closeModal('voz')">Cancelar</button>
+      <button class="btn-ms" onclick="guardarVoz()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_KEY='AIzaSyCnbxeCPIc_QSpA382a1OZD7YM0sylUogo';
+let stops=[],dirService,dirRenderer,mapsLoaded=false;
+let urgSel='12',impUrg='12';
+let editingNoteIdx=null,falloIdx=null,alertVozInterval=null;
+let vozSeleccionada=null,vozRate=0.85;
+const STORAGE_KEY='rutas_activas_v5';
+
+// ── NUMS EN LETRAS ──
+const NUMS={'cero':0,'uno':1,'una':1,'dos':2,'tres':3,'cuatro':4,'cinco':5,'seis':6,'siete':7,'ocho':8,'nueve':9,'diez':10,'once':11,'doce':12,'trece':13,'catorce':14,'quince':15,'dieciséis':16,'dieciseis':16,'diecisiete':17,'dieciocho':18,'diecinueve':19,'veinte':20,'veintiuno':21,'veintidós':22,'veintidos':22,'veintitrés':23,'veintitres':23,'veinticuatro':24,'veinticinco':25,'veintiséis':26,'veintiseis':26,'veintisiete':27,'veintiocho':28,'veintinueve':29,'treinta':30,'cuarenta':40,'cincuenta':50,'sesenta':60,'setenta':70,'ochenta':80,'noventa':90,'cien':100,'ciento':100};
+function convNums(t){t=t.replace(/n[uú]mero\s+/gi,'');const p=Object.keys(NUMS).sort((a,b)=>b.length-a.length);for(const w of p)t=t.replace(new RegExp('\\b'+w+'\\b','gi'),NUMS[w]);return t.replace(/\s+/g,' ').trim();}
+
+// ── UTILS ──
+function selUrg(u){urgSel=u;document.querySelectorAll('[data-urg]').forEach(b=>b.classList.remove('sel'));document.querySelector(`[data-urg="${u}"]`).classList.add('sel');}
+function selImpUrg(u){impUrg=u;document.querySelectorAll('[data-iurg]').forEach(b=>b.classList.remove('sel'));document.querySelector(`[data-iurg="${u}"]`).classList.add('sel');}
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(stops));}
+function load(){try{const s=localStorage.getItem(STORAGE_KEY);if(s)stops=JSON.parse(s);}catch{}}
+function getTodayStr(){return new Date().toISOString().split('T')[0];}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── FECHA ──
+function updateDate(){
+  const n=new Date();
+  const dias=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+  const meses=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+  document.getElementById('hoy-fecha').textContent=`${String(n.getDate()).padStart(2,'0')} ${meses[n.getMonth()]} ${n.getFullYear()}`;
+  document.getElementById('hoy-dia').textContent=dias[n.getDay()];
+}
+
+// ── VOZ ──
+function hablar(txt){
+  const speak=()=>{try{window.speechSynthesis.cancel();const m=new SpeechSynthesisUtterance(txt);m.lang='es-ES';m.rate=vozRate||0.85;m.pitch=1;m.volume=1;if(vozSeleccionada)m.voice=vozSeleccionada;window.speechSynthesis.speak(m);}catch{}};
+  speak();setTimeout(speak,600);
+}
+function cargarVoces(){
+  const voces=window.speechSynthesis.getVoices();
+  const sel=document.getElementById('sel-voz');
+  if(!sel)return;
+  sel.innerHTML='';
+  const vozGuardada=localStorage.getItem('vozNombre');
+  const espa=voces.filter(v=>v.lang.startsWith('es'));
+  const lista=espa.length>0?espa:voces;
+  lista.forEach(v=>{const opt=document.createElement('option');opt.value=v.name;opt.textContent=`${v.name} (${v.lang})`;if(v.name===vozGuardada)opt.selected=true;sel.appendChild(opt);});
+  const rateG=localStorage.getItem('vozRate');
+  if(rateG){vozRate=parseFloat(rateG);document.getElementById('voz-rate').value=vozRate;document.getElementById('voz-rate-val').textContent=vozRate;}
+  if(vozGuardada)vozSeleccionada=lista.find(v=>v.name===vozGuardada)||null;
+}
+function showVozModal(){document.getElementById('modal-voz').classList.add('open');setTimeout(cargarVoces,200);}
+function previewVoz(){
+  const sel=document.getElementById('sel-voz');
+  const rate=parseFloat(document.getElementById('voz-rate').value);
+  const voces=window.speechSynthesis.getVoices();
+  const voz=voces.find(v=>v.name===sel.value);
+  try{window.speechSynthesis.cancel();const m=new SpeechSynthesisUtterance('Atención. Prueba de voz. Uno dos tres.');m.lang='es-ES';m.rate=rate;m.pitch=1;m.volume=1;if(voz)m.voice=voz;window.speechSynthesis.speak(m);}catch{}
+}
+function guardarVoz(){
+  const sel=document.getElementById('sel-voz');
+  const rate=parseFloat(document.getElementById('voz-rate').value);
+  const voces=window.speechSynthesis.getVoices();
+  vozSeleccionada=voces.find(v=>v.name===sel.value)||null;
+  vozRate=rate;
+  localStorage.setItem('vozNombre',sel.value);
+  localStorage.setItem('vozRate',rate);
+  closeModal('voz');
+  toast('✅ Voz guardada','#00e676','#060d1a');
+}
+if(window.speechSynthesis){
+  if(typeof window.speechSynthesis.onvoiceschanged!=='undefined'){window.speechSynthesis.onvoiceschanged=cargarVoces;}
+  else{setTimeout(cargarVoces,500);}
+}
+
+// ── TOAST ──
+function toast(msg,color='#ff7b00',tc='#060d1a'){const d=document.createElement('div');d.className='notif-toast';d.style.background=color;d.style.color=tc;d.textContent=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),8000);}
+
+// ── POPUPS ──
+function mostrarWarn(hora,titulo,msg,voz){
+  document.getElementById('pw-time').textContent=hora;
+  document.getElementById('pw-title').textContent=titulo;
+  document.getElementById('pw-msg').textContent=msg;
+  document.getElementById('popup-warn').classList.add('open');
+  hablar(voz);
+}
+function mostrarAlert(hora,titulo,sancion,msg,voz){
+  document.getElementById('pa-time').textContent=hora;
+  document.getElementById('pa-title').textContent=titulo;
+  const se=document.getElementById('pa-sancion');
+  if(sancion){se.textContent=sancion;se.style.display='block';}else se.style.display='none';
+  document.getElementById('pa-msg').textContent=msg;
+  document.getElementById('popup-alert').classList.add('open');
+  hablar(voz);
+  if(alertVozInterval)clearInterval(alertVozInterval);
+  alertVozInterval=setInterval(()=>{if(document.getElementById('popup-alert').classList.contains('open'))hablar(voz);else{clearInterval(alertVozInterval);alertVozInterval=null;}},30000);
+}
+function mostrarSuccess(hora,titulo,msg,voz){
+  document.getElementById('ps-time').textContent=hora;
+  document.getElementById('ps-title').textContent=titulo;
+  document.getElementById('ps-msg').textContent=msg;
+  document.getElementById('popup-success').classList.add('open');
+  hablar(voz);
+}
+function cerrarPopup(tipo){
+  document.getElementById('popup-'+tipo).classList.remove('open');
+  if(tipo==='alert'&&alertVozInterval){clearInterval(alertVozInterval);alertVozInterval=null;}
+}
+
+// ── ALARMAS ──
+const ALARMAS=[
+  {keyW:'rec14w',keyA:'rec14a',wH:13,wM:0,aH:13,aM:30,urgente:'rec14',celda:'al-19',
+   wHora:'13:00',wTit:'⚡ Aviso — Recogidas antes 14h',wMsg:'En 30 minutos tienes que hacer las recogidas de antes de las 14h.',wVoz:'Atención. En treinta minutos tienes que hacer las recogidas de antes de las catorce horas.',
+   aHora:'13:30',aTit:'¡Ir a recoger AHORA!',aSancion:'',aMsg:'Ve ahora mismo a hacer las recogidas de antes de las 14h. Recuerda cerrar cada recogida en la PDA.',aVoz:'Atención urgente. Son las trece y media. Ve ahora mismo a hacer las recogidas de antes de las catorce horas. Recuerda cerrar cada recogida en la PDA.'},
+  {keyW:'12w',keyA:'12a',wH:11,wM:0,aH:11,aM:20,urgente:'12',celda:'al-12',
+   wHora:'11:00',wTit:'⚡ Aviso — Urgentes 12h',wMsg:'En 20 minutos vence el plazo de los urgentes de 12 horas.',wVoz:'Atención. En veinte minutos vence el plazo de los urgentes de doce horas.',
+   aHora:'11:20',aTit:'¡Aplazar urgentes 12h AHORA!',aSancion:'',aMsg:'Debes aplazar todos los urgentes de 12 horas ahora mismo.',aVoz:'Atención urgente. Son las once y veinte. Aplaza los urgentes de doce horas ahora mismo.'},
+  {keyW:'14w',keyA:'14a',wH:13,wM:0,aH:13,aM:20,urgente:'14',celda:'al-14',
+   wHora:'13:00',wTit:'⚡ Aviso — Urgentes 14h',wMsg:'En 20 minutos vence el plazo de los urgentes de 14 horas. Penalización de 50€ por paquete.',wVoz:'Atención. En veinte minutos vence el plazo de los urgentes de catorce horas.',
+   aHora:'13:20',aTit:'¡Aplazar urgentes 14h AHORA!',aSancion:'50€ por paquete',aMsg:'Debes aplazar todos los urgentes de 14 horas. Penalización de 50€ por paquete.',aVoz:'Alerta máxima. Son las trece y veinte. Aplaza los urgentes de catorce horas ahora mismo. No lo dejes para mas tarde.'},
+  {keyW:'19w',keyA:'19a',wH:17,wM:0,aH:17,aM:20,urgente:'19',celda:'al-19',
+   wHora:'17:00',wTit:'⚡ Aviso — Urgentes 19h',wMsg:'En 20 minutos vence el plazo de los urgentes de 19 horas.',wVoz:'Atención. En veinte minutos vence el plazo de los urgentes de diecinueve horas.',
+   aHora:'17:20',aTit:'¡Aplazar urgentes 19h AHORA!',aSancion:'',aMsg:'Debes aplazar todos los urgentes de 19 horas.',aVoz:'Atención urgente. Son las cinco y veinte. Aplaza los urgentes que sepas que no vas a entregar de las diecinueve horas ahora mismo.'},
+  {keyW:'rec18w',keyA:'rec18a',wH:17,wM:0,aH:17,aM:30,urgente:'rec18',celda:'al-19',
+   wHora:'17:00',wTit:'⚡ Aviso — Recogidas antes 18h',wMsg:'En 30 minutos tienes que hacer las recogidas de las 18h.',wVoz:'Atención. En treinta minutos tienes que hacer las recogidas de antes de las dieciocho horas.',
+    
+   aHora:'17:30',aTit:'¡Ir a recoger AHORA!',aSancion:'',aMsg:'Ve ahora mismo a hacer las recogidas de antes de las 18h. Recuerda cerrar cada recogida en la PDA.',aVoz:'Atención urgente. Son las cinco y media. Ve ahora mismo a hacer las recogidas de antes de las dieciocho horas.'},
+];
+const firedW={},firedA={};
+
+function comprobarAplazamientos(a,hora){
+  const urg=a.urgente;
+  const pend=stops.filter(s=>s.urgente===urg&&!s.completada&&!s.aplazado).length;
+  if(pend===0){
+    mostrarSuccess(hora,'✅ ¡Perfecto!',`Todos los urgentes de ${urg}h están aplazados. ¡Buen trabajo!`,`Perfecto. Todos los urgentes de ${urg.replace('rec','')} horas están aplazados. Buen trabajo.`);
+  } else {
+    const msg=`${a.aMsg} Tienes ${pend} urgente${pend>1?'s':''} sin aplazar.`;
+    const voz=`${a.aVoz} Tienes ${pend} urgente${pend>1?'s':''} sin aplazar.`;
+    mostrarAlert(a.aHora,a.aTit,a.aSancion,msg,voz);
+  }
+}
+
+function updateAlarmCells(){
+  const n=new Date(),t=n.getHours()*60+n.getMinutes();
+  const proxWarn=ALARMAS.find(a=>{const tw=a.wH*60+a.wM;return t>=tw&&t<a.aH*60+a.aM;});
+  const alAviso=document.getElementById('al-aviso');
+  const alAvisoTime=document.getElementById('al-aviso-time');
+  if(proxWarn){alAvisoTime.textContent=proxWarn.wHora;alAviso.className='alarm-cell warn';}
+  else{const prox=ALARMAS.find(a=>t<a.wH*60+a.wM);alAvisoTime.textContent=prox?prox.wHora:'—';alAviso.className='alarm-cell ok';}
+  ALARMAS.forEach(a=>{
+    const cell=document.getElementById(a.celda);
+    if(!cell)return;
+    const tw=a.wH*60+a.wM,ta=a.aH*60+a.aM;
+    if(t>=ta&&t<ta+30)cell.className='alarm-cell alert';
+    else if(t>=tw&&t<ta)cell.className='alarm-cell warn';
+    else cell.className='alarm-cell ok';
+  });
+}
+
+function checkAlarms(){
+  const n=new Date(),t=n.getHours()*60+n.getMinutes();
+  ALARMAS.forEach(a=>{
+    const tw=a.wH*60+a.wM,ta=a.aH*60+a.aM;
+    if(t>=tw&&t<tw+5&&!firedW[a.keyW]){firedW[a.keyW]=true;mostrarWarn(a.wHora,a.wTit,a.wMsg,a.wVoz);}
+    if(t<tw)firedW[a.keyW]=false;
+    if(t>=ta&&t<ta+5&&!firedA[a.keyA]){firedA[a.keyA]=true;comprobarAplazamientos(a,a.aHora);}
+    if(t<ta)firedA[a.keyA]=false;
+  });
+  updateAlarmCells();
+}
+function checkOnOpen(){
+  const n=new Date(),t=n.getHours()*60+n.getMinutes();
+  ALARMAS.forEach(a=>{
+    const tw=a.wH*60+a.wM,ta=a.aH*60+a.aM;
+    if(t>=tw&&t<ta&&!firedW[a.keyW]){firedW[a.keyW]=true;mostrarWarn(a.wHora,a.wTit,a.wMsg,a.wVoz);}
+    if(t>=ta&&t<ta+30&&!firedA[a.keyA]){firedA[a.keyA]=true;comprobarAplazamientos(a,a.aHora);}
+  });
+  updateAlarmCells();
+}
+setInterval(checkAlarms,20000);
+setInterval(updateAlarmCells,30000);
+
+// ── SEMÁFORO ──
+function getSemaforo(stop){
+  const n=new Date(),t=n.getHours()*60+n.getMinutes(),today=getTodayStr(),u=stop.urgente;
+  if(stop.aplazado){
+    if(stop.fechaAplazado&&stop.fechaAplazado<today){
+      if(t>=13*60)return 'aplazado-crit';
+      return 'aplazado-warn';
+    }
+    return 'aplazado-ok';
+  }
+  if(u==='12'){if(t>=11*60+20)return 'sem-red';if(t>=11*60)return 'sem-amber';return 'sem-green';}
+  if(u==='14'){if(t>=13*60+20)return 'sem-red';if(t>=13*60)return 'sem-amber';if(t>=12*60+45)return 'sem-green-blink';return 'sem-green';}
+  if(u==='19'){
+    const horas=(new Date()-new Date(stop.fechaCreacion||new Date()))/(1000*60*60);
+    if(horas>=24){if(t>=17*60+20)return 'sem-red';if(t>=17*60)return 'sem-amber';return 'sem-green-blink';}
+    if(t>=17*60+20)return 'sem-red';if(t>=17*60)return 'sem-amber';return 'sem-green';
+  }
+  return 'sem-green';
+}
+
+// ── MAPS ──
+window.initMap=function(){
+  mapsLoaded=true;
+  dirService=new google.maps.DirectionsService();
+  dirRenderer=new google.maps.DirectionsRenderer();
+};
+function loadMaps(){if(document.getElementById('gms'))return;const s=document.createElement('script');s.id='gms';s.src=`https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap`;s.async=true;s.defer=true;document.head.appendChild(s);}
+
+// ── AÑADIR ──
+const MUNICIPIOS=['torres de cotillas','murcia','alguazas','ceuti','ceutí','lorqui','lorquí','molina'];
+function getNextId(){const ids=stops.map(s=>s.pkgId||0);return(ids.length>0?Math.max(...ids):0)+1;}
+function getIdColor(u){return{'12':'var(--urg12)','14':'var(--urg14)','19':'var(--urg19)','rec14':'var(--rec14)','rec18':'var(--rec18)'}[u]||'var(--done)';}
+
+function addStop(){
+  let dir=document.getElementById('input-dir').value.trim();
+  if(!dir){alert('Por favor escribe una dirección.');return;}
+  dir=convNums(dir);
+  if(!MUNICIPIOS.some(m=>dir.toLowerCase().includes(m)))dir+=', Las Torres de Cotillas';
+  stops.push({direccion:dir,urgente:urgSel,pkgId:getNextId(),nota:'',completada:false,aplazado:false,recogido:false,fallos:[],fechaCreacion:new Date().toISOString(),fechaAplazado:null,id:Date.now()});
+  document.getElementById('input-dir').value='';
+  document.getElementById('input-dir').focus();
+  save();render();updateStats();
+  if(!mapsLoaded)loadMaps();
+}
+
+// ── IMPORTAR ──
+function showImportModal(){document.getElementById('modal-import').classList.add('open');setTimeout(()=>document.getElementById('import-textarea').focus(),100);}
+function importarDirecciones(){
+  const texto=document.getElementById('import-textarea').value.trim();
+  if(!texto){alert('Pega al menos una dirección.');return;}
+  const lineas=texto.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
+  let añadidas=0;
+  lineas.forEach(linea=>{
+    let dir=linea,urg=impUrg;
+    if(linea.includes('|')){const p=linea.split('|');dir=p[0].trim();urg=p[1].trim();}
+    dir=convNums(dir);
+    if(!MUNICIPIOS.some(m=>dir.toLowerCase().includes(m)))dir+=', Las Torres de Cotillas';
+    stops.push({direccion:dir,urgente:urg,pkgId:getNextId(),nota:'',completada:false,aplazado:false,recogido:false,fallos:[],fechaCreacion:new Date().toISOString(),fechaAplazado:null,id:Date.now()+Math.random()});
+    añadidas++;
+  });
+  closeModal('import');
+  save();render();updateStats();
+  if(!mapsLoaded)loadMaps();
+  toast(`✅ ${añadidas} direcciones importadas`,'#00e676','#060d1a');
+}
+
+// ── RENDER ──
+const urgBadge={'12':'<span class="tag b12">🟠 12h</span>','14':'<span class="tag b14">🔴 14h</span>','19':'<span class="tag b19">🔵 19h</span>','rec14':'<span class="tag brec14">📤 Recog.14h</span>','rec18':'<span class="tag brec18">📤 Recog.18h</span>'};
+const urgOrder={'rec14':0,'rec18':1,'12':2,'14':3,'19':4,'normal':5};
+
+function render(){
+  const list=document.getElementById('stops-list');
+  const btn=document.getElementById('btn-opt');
+  const today=getTodayStr();
+  if(!stops.length){list.innerHTML='<div class="empty-stops"><div class="empty-icon">📦</div>Añade paradas<br>y pulsa OPTIMIZAR</div>';btn.disabled=true;updateStats();return;}
+  const active=stops.filter(s=>!s.completada&&!s.aplazado);
+  btn.disabled=active.length<2;
+  const sorted=[...stops].sort((a,b)=>{
+    if(a.completada!==b.completada)return a.completada?1:-1;
+    const aAyer=a.aplazado&&a.fechaAplazado&&a.fechaAplazado<today;
+    const bAyer=b.aplazado&&b.fechaAplazado&&b.fechaAplazado<today;
+    if(aAyer!==bAyer)return aAyer?-1:1;
+    if(a.aplazado!==b.aplazado)return a.aplazado?1:-1;
+    return urgOrder[a.urgente]-urgOrder[b.urgente];
+  });
+  let numPend=0;
+  const isStart=(s)=>active.length>=2&&s.id===active[0].id;
+  list.innerHTML=sorted.map((s)=>{
+    const oi=stops.indexOf(s);
+    const esAyer=s.aplazado&&s.fechaAplazado&&s.fechaAplazado<today;
+    const esHoy=s.aplazado&&s.fechaAplazado===today;
+    const sem=getSemaforo(s);
+    const tieneFallos=s.fallos&&s.fallos.length>0;
+    const esRecogida=s.urgente==='rec14'||s.urgente==='rec18';
+    let numDisplay='✓';
+    if(!s.completada&&!s.aplazado){numPend++;numDisplay=numPend;}
+    else if(s.aplazado&&!s.completada)numDisplay='⏸';
+    let cls='stop-card ';
+    if(s.completada)cls+='completed';
+    else if(esAyer)cls+=sem==='aplazado-crit'?'aplazado-critical':'aplazado-priority';
+    else if(esHoy)cls+='aplazado-card';
+    else if(tieneFallos)cls+='fallida';
+    else cls+=`urg-${s.urgente}`;
+    let estadoBadge='';
+    if(esAyer)estadoBadge=sem==='aplazado-crit'?'<span class="tag t-aplazado-crit">🔴 ENTREGAR HOY</span>':'<span class="tag t-aplazado-warn">🟡 APLAZADO — Prioridad</span>';
+    else if(esHoy)estadoBadge='<span class="tag t-aplazado">🟢 APLAZADO</span>';
+    const fallosHtml=tieneFallos?s.fallos.map(f=>`<div class="fallo-item">⚠️ Intento ${f.intento} — ${f.hora}${f.nota?' — '+esc(f.nota):''}</div>`).join(''):'';
+    const btnAplazar=!esRecogida&&!s.completada?`<button onclick="aplazar(${oi})" class="btn-aplazar ${sem}" ${s.aplazado?'disabled':''}>${s.aplazado?'✅ Aplazado':'🟢 Aplazar'}</button>`:'';
+    const btnRecoger=esRecogida&&!s.completada?`<button onclick="marcarRecogida(${oi})" class="btn-aplazar ${s.recogido?'aplazado-ok':'sem-green'}" ${s.recogido?'disabled':''}>${s.recogido?'✅ Recogido':'📤 Marcar Recogida'}</button>`:'';
+    return `<div class="${cls}">
+      <div class="stop-num ${s.completada?'done':''}">${numDisplay}</div>
+      <div class="stop-body">
+        <div class="stop-id" style="color:${getIdColor(s.urgente)}">#${String(s.pkgId||0).padStart(3,'0')}</div>
+        <div class="stop-dir">${esc(s.direccion)}</div>
+        <div class="stop-tags">
+          ${urgBadge[s.urgente]||''}
+          ${isStart(s)?'<span class="tag bstart">🟢 INICIO</span>':''}
+          ${estadoBadge}
+          ${tieneFallos?`<span class="tag" style="background:rgba(255,23,68,0.12);color:var(--fail);border-color:var(--fail)">⚠️ ${s.fallos.length} FALLO${s.fallos.length>1?'S':''}</span>`:''}
+        </div>
+        ${fallosHtml}
+        ${s.nota?`<div class="stop-note">📝 ${esc(s.nota)}</div>`:''}
+        ${!s.completada?`<div class="stop-btns">
+          <div class="stop-btns-row">
+            <button onclick="navegar(${oi})" class="btn-nav">🧭 Navegar</button>
+            ${!esRecogida?`<button onclick="openFallo(${oi})" class="btn-fallo-card">⚠️ Fallo</button>`:''}
+          </div>
+          ${btnAplazar?`<div class="stop-btns-row">${btnAplazar}</div>`:''}
+          ${btnRecoger?`<div class="stop-btns-row">${btnRecoger}</div>`:''}
+        </div>`:''}
+      </div>
+      <div class="stop-actions">
+        <button class="icon-btn" onclick="openNota(${oi})">📝</button>
+        <button class="icon-btn" onclick="toggle(${oi})" style="color:${!s.completada?'var(--done)':'var(--muted)'}">${s.completada?'↩':'✓'}</button>
+        <button class="icon-btn" onclick="del(${oi})" style="color:var(--fail)">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  updateStats();
+}
+
+function aplazar(i){if(stops[i].aplazado)return;stops[i].aplazado=true;stops[i].fechaAplazado=getTodayStr();save();render();toast('🟢 Aplazado correctamente','#00e676','#060d1a');}
+function marcarRecogida(i){
+  stops[i].recogido=true;stops[i].horaRecogida=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  save();render();
+  mostrarAlert(stops[i].horaRecogida,'⚠️ Cierra la recogida en la PDA','',`Recogida a las ${stops[i].horaRecogida}. Asegúrate de cerrarla en la PDA ahora mismo o no la cobrarás.`,'Atención. Asegúrate de cerrar la recogida en la PDA ahora mismo. Si no la cierras no la cobrarás.');
+}
+function del(i){stops.splice(i,1);save();render();}
+function toggle(i){stops[i].completada=!stops[i].completada;if(stops[i].completada)stops[i].aplazado=false;save();render();}
+function navegar(i){window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(stops[i].direccion)}&travelmode=driving&dir_action=navigate`,'_blank');}
+
+function updateStats(){
+  const total=stops.length,done=stops.filter(s=>s.completada).length;
+  const aplazados=stops.filter(s=>s.aplazado&&!s.completada).length;
+  const pendientes=stops.filter(s=>!s.completada&&!s.aplazado).length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-txt').textContent=`${done}/${total}`;
+  const ae=document.getElementById('prog-aplazado');
+  if(aplazados>0){ae.style.display='block';ae.textContent=`🟢 ${aplazados} aplaz.`;}else ae.style.display='none';
+  document.getElementById('stat-par').textContent=pendientes;
+}
+
+// ── OPTIMIZAR ──
+function showOptModal(){
+  const active=stops.filter(s=>!s.completada&&!s.aplazado);
+  if(active.length<2){alert('Necesitas al menos 2 paradas.');return;}
+  const si=document.getElementById('sel-inicio');si.innerHTML='';
+  active.forEach((s,i)=>{si.innerHTML+=`<option value="${s.id}">${i+1}. ${s.direccion.substring(0,42)}${s.direccion.length>42?'...':''}</option>`;});
+  si.value=active[0].id;
+  document.getElementById('modal-opt').classList.add('open');
+}
+function getStart(){
+  const active=stops.filter(s=>!s.completada&&!s.aplazado);
+  const startId=Number(document.getElementById('sel-inicio').value);
+  return{startStop:active.find(s=>s.id===startId),rest:active.filter(s=>s.id!==startId)};
+}
+function optimizarDistancia(){
+  closeModal('opt');
+  if(!mapsLoaded||!dirService){alert('Cargando mapa...');return;}
+  const{startStop,rest}=getStart();
+  if(!rest.length)return;
+  const last=rest[rest.length-1];
+  dirService.route({origin:startStop.direccion,destination:last.direccion,waypoints:rest.slice(0,-1).map(s=>({location:s.direccion,stopover:true})),optimizeWaypoints:true,travelMode:google.maps.TravelMode.DRIVING,region:'es'},(result,status)=>{
+    if(status==='OK'){
+      let d=0,t=0;result.routes[0].legs.forEach(l=>{d+=l.distance.value;t+=l.duration.value;});
+      document.getElementById('stat-dist').textContent=(d/1000).toFixed(1)+'km';
+      const m=Math.round(t/60);document.getElementById('stat-time').textContent=m<60?m+'min':Math.floor(m/60)+'h'+(m%60)+'m';
+      const wo=result.routes[0].waypoint_order;
+      const reordered=[startStop,...wo.map(i=>rest.slice(0,-1)[i]),last];
+      stops=[...reordered,...stops.filter(s=>s.completada||s.aplazado)];
+      save();render();toast('🗺️ Ruta optimizada por distancia','#00b0ff','#fff');
+    }else alert('Error: '+status);
+  });
+}
+function optimizarUrgencia(){
+  closeModal('opt');
+  if(!mapsLoaded||!dirService){alert('Cargando mapa...');return;}
+  const{startStop,rest}=getStart();
+  const b12=rest.filter(s=>s.urgente==='12');
+  const b14=rest.filter(s=>s.urgente==='14');
+  const b19=rest.filter(s=>s.urgente==='19');
+  const bR=rest.filter(s=>s.urgente==='rec14'||s.urgente==='rec18');
+  const bN=rest.filter(s=>s.urgente==='normal');
+  const ruta=[startStop,...bR,...b12,...b14,...b19,...bN];
+  if(ruta.length<2)return;
+  const last=ruta[ruta.length-1];
+  dirService.route({origin:ruta[0].direccion,destination:last.direccion,waypoints:ruta.slice(1,-1).map(s=>({location:s.direccion,stopover:true})),optimizeWaypoints:false,travelMode:google.maps.TravelMode.DRIVING,region:'es'},(result,status)=>{
+    if(status==='OK'){
+      let d=0,t=0;result.routes[0].legs.forEach(l=>{d+=l.distance.value;t+=l.duration.value;});
+      document.getElementById('stat-dist').textContent=(d/1000).toFixed(1)+'km';
+      const m=Math.round(t/60);document.getElementById('stat-time').textContent=m<60?m+'min':Math.floor(m/60)+'h'+(m%60)+'m';
+      stops=[...ruta,...stops.filter(s=>s.completada||s.aplazado)];
+      save();render();toast('⏰ Ruta por urgencia','#ff7b00','#060d1a');
+    }else alert('Error: '+status);
+  });
+}
+
+// ── NOTAS Y FALLOS ──
+function openNota(i){editingNoteIdx=i;document.getElementById('modal-dir').textContent=stops[i].direccion;document.getElementById('modal-textarea').value=stops[i].nota||'';document.getElementById('modal-nota').classList.add('open');}
+function saveNote(){if(editingNoteIdx===null)return;stops[editingNoteIdx].nota=document.getElementById('modal-textarea').value.trim();save();render();closeModal('nota');}
+function openFallo(i){falloIdx=i;document.getElementById('modal-fallo-dir').textContent=stops[i].direccion;document.getElementById('modal-fallo-textarea').value='';document.getElementById('modal-fallo').classList.add('open');}
+function saveFallo(){
+  if(falloIdx===null)return;
+  if(!stops[falloIdx].fallos)stops[falloIdx].fallos=[];
+  const n=new Date(),hora=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');
+  stops[falloIdx].fallos.push({intento:stops[falloIdx].fallos.length+1,hora,nota:document.getElementById('modal-fallo-textarea').value.trim()});
+  save();render();closeModal('fallo');
+}
+
+function closeModal(w){
+  document.getElementById('modal-'+w).classList.remove('open');
+  if(w==='nota')editingNoteIdx=null;
+  if(w==='fallo')falloIdx=null;
+}
+['modal-nota','modal-fallo','modal-import','modal-opt','modal-voz'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal(id.replace('modal-',''));});
+});
+
+function newDay(){if(!confirm('¿Nueva jornada? Se borrarán todas las paradas.'))return;stops=[];save();render();updateStats();}
+
+// ── SECCIÓN AÑADIR COLAPSABLE ──
+let addCollapsed=localStorage.getItem('addCollapsed')==='true';
+function toggleAddSection(){
+  addCollapsed=!addCollapsed;
+  localStorage.setItem('addCollapsed',addCollapsed);
+  applyAddCollapse();
+}
+function applyAddCollapse(){
+  const body=document.getElementById('add-section-body');
+  const btn=document.getElementById('btn-toggle-add');
+  if(addCollapsed){
+    body.style.maxHeight='0';
+    body.classList.add('hidden');
+    btn.classList.add('collapsed');
+  }else{
+    body.classList.remove('hidden');
+    body.style.maxHeight=body.scrollHeight+'px';
+    btn.classList.remove('collapsed');
+  }
+}
+
+// ── INIT ──
+load();updateDate();render();updateStats();
+if(stops.length>0)loadMaps();
+document.getElementById('input-dir').addEventListener('keydown',e=>{if(e.key==='Enter')addStop();});
+const sliderVoz=document.getElementById('voz-rate');
+if(sliderVoz)sliderVoz.addEventListener('input',function(){document.getElementById('voz-rate-val').textContent=this.value;});
+setInterval(render,60000);
+setTimeout(checkOnOpen,1500);
+applyAddCollapse();
+</script>
+</body>
+</html>
+
+                                                                    
